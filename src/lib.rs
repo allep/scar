@@ -7,6 +7,7 @@ use tempdir::TempDir;
 use walkdir::WalkDir;
 
 mod project {
+    use super::*;
 
     pub struct File {
         name: String,
@@ -32,7 +33,7 @@ mod project {
         }
 
         fn make_used_modules(file_content: &str) -> Result<Vec<String>, &'static str> {
-            let re = super::Regex::new(r#"^\s*#include\s*[<"](.*?)[>"](?:\s*//.*)?$"#)
+            let re = Regex::new(r#"^\s*#include\s*[<"](.*?)[>"](?:\s*//.*)?$"#)
                 .map_err(|_| "Error in regex creation")?;
 
             let used_modules = file_content
@@ -50,10 +51,30 @@ mod project {
         }
     }
 
-    pub struct Directory {
-        path: String,
+    pub struct Project<'a> {
+        base_path: &'a Path,
         files: Vec<File>,
-        directories: Vec<Box<Directory>>,
+    }
+
+    impl<'a> Project<'a> {
+        pub fn make(base_path: &Path) -> Result<Project, Box<dyn Error>> {
+            Ok(Project {
+                base_path: base_path,
+                files: Vec::new(),
+            })
+        }
+
+        pub fn scan_files(&mut self) -> Result<(), Box<dyn Error>> {
+            for entry in WalkDir::new(&self.base_path) {
+                let entry = entry?;
+                let path = entry.path();
+
+                println!("Scanning path: {:?}", path);
+                self.files.push(File::make(path.to_str().unwrap(), "todo")?);
+            }
+
+            Ok(())
+        }
     }
 }
 
@@ -148,9 +169,8 @@ class FooBar {{
 
         let files = create_cpp_files_in_path(temp_dir.path())?;
 
-        for entry in WalkDir::new(&temp_dir) {
-            println!("Walking {}", entry?.path().display());
-        }
+        let mut project = project::Project::make(&temp_dir.path())?;
+        project.scan_files();
 
         // cleanup
         for f in files {
