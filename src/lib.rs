@@ -1,4 +1,10 @@
 use regex::Regex;
+use std::error::Error;
+use std::fs::File;
+use std::io::{self, Write};
+use std::path::Path;
+use tempdir::TempDir;
+use walkdir::WalkDir;
 
 mod project {
 
@@ -43,6 +49,12 @@ mod project {
             Ok(used_modules)
         }
     }
+
+    pub struct Directory {
+        path: String,
+        files: Vec<File>,
+        directories: Vec<Box<Directory>>,
+    }
 }
 
 #[cfg(test)]
@@ -72,6 +84,80 @@ int main(void) {
             f.get_used_modules()
         );
 
+        Ok(())
+    }
+
+    fn create_cpp_files_in_path(path: &Path) -> Result<Vec<File>, Box<dyn Error>> {
+        let first_path = path.join("first.cpp");
+        let mut first = File::create(first_path)?;
+
+        writeln!(
+            first,
+            "\
+#include <iostream>
+#include \"third.h\"
+// #include \"some_random_header.h\"
+
+void main() {{
+    // commented out code
+}}
+
+"
+        )?;
+
+        let second_path = path.join("second.cpp");
+        let mut second = File::create(second_path)?;
+
+        writeln!(
+            second,
+            "\
+#include \"third.h\"
+#include \"very_basic_header.h\"
+
+void foobar() {{
+    // doing some internal stuff here
+}}
+"
+        )?;
+
+        let third_path = path.join("third.h");
+        let mut third = File::create(third_path)?;
+
+        writeln!(
+            third,
+            "\
+#include \"some_random_header_too.h\"
+
+class FooBar {{
+    explicit FooBar() = default;
+
+    void DoStuff() noexcept {{}};
+}};
+
+"
+        )?;
+
+        Ok(vec![first, second, third])
+    }
+
+    #[test]
+    fn cpp_directory_parsing_test() -> Result<(), Box<dyn Error>> {
+        // arrange
+        let temp_dir = TempDir::new("scar_cpp_directory_parsing_test")
+            .map_err(|_| "Temporary directory creation error")?;
+
+        let files = create_cpp_files_in_path(temp_dir.path())?;
+
+        for entry in WalkDir::new(&temp_dir) {
+            println!("Walking {}", entry?.path().display());
+        }
+
+        // cleanup
+        for f in files {
+            drop(f);
+        }
+
+        temp_dir.close()?;
         Ok(())
     }
 }
