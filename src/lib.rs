@@ -7,6 +7,8 @@ use tempdir::TempDir;
 use walkdir::WalkDir;
 
 mod project {
+    use std::fs::read_to_string;
+
     use super::*;
 
     pub struct File {
@@ -68,12 +70,20 @@ mod project {
             for entry in WalkDir::new(&self.base_path) {
                 let entry = entry?;
                 let path = entry.path();
+                let file_type = entry.file_type();
 
-                println!("Scanning path: {:?}", path);
-                self.files.push(File::make(path.to_str().unwrap(), "todo")?);
+                if file_type.is_file() {
+                    let content = read_to_string(path)?;
+                    self.files
+                        .push(File::make(path.to_str().unwrap(), &content)?);
+                }
             }
 
             Ok(())
+        }
+
+        pub fn get_num_files(&self) -> usize {
+            self.files.len()
         }
     }
 }
@@ -170,7 +180,10 @@ class FooBar {{
         let files = create_cpp_files_in_path(temp_dir.path())?;
 
         let mut project = project::Project::make(&temp_dir.path())?;
-        project.scan_files();
+        project.scan_files()?;
+
+        // assert
+        assert_eq!(3, project.get_num_files());
 
         // cleanup
         for f in files {
