@@ -1,3 +1,17 @@
+mod project {
+    pub struct File {
+        name: String,
+        used_symbols: Vec<String>,
+        defined_symbols: Vec<String>,
+    }
+
+    pub struct Directory {
+        name: String,
+        files: Vec<File>,
+        directories: Vec<Box<Directory>>,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
