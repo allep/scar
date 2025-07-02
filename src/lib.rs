@@ -66,14 +66,14 @@ pub mod project {
         }
     }
 
-    pub struct Project<'a> {
+    pub struct ProjectScanner<'a> {
         base_path: &'a Path,
         files: Vec<File>,
     }
 
-    impl<'a> Project<'a> {
-        pub fn make(base_path: &Path) -> Result<Project, Box<dyn Error>> {
-            Ok(Project {
+    impl<'a> ProjectScanner<'a> {
+        pub fn make(base_path: &Path) -> Result<ProjectScanner, Box<dyn Error>> {
+            Ok(ProjectScanner {
                 base_path: base_path,
                 files: Vec::new(),
             })
@@ -130,7 +130,7 @@ pub mod project {
 
     pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         let path = Path::new(&config.project_path);
-        let mut project = Project::make(path)?;
+        let mut project = ProjectScanner::make(path)?;
 
         project.scan_files()?;
 
@@ -242,7 +242,7 @@ class FooBar {{
         let first_level_files = create_cpp_files_in_path(temp_base_dir.path())?;
         let second_level_files = create_cpp_files_in_path(temp_inner_dir.path())?;
 
-        let mut project = project::Project::make(&temp_base_dir.path())?;
+        let mut project = project::ProjectScanner::make(&temp_base_dir.path())?;
 
         // act
         project.scan_files()?;
