@@ -1,15 +1,28 @@
 use regex::Regex;
 use std::error::Error;
-use std::fs::File;
-use std::io::{self, Write};
+use std::fs::read_to_string;
 use std::path::Path;
-use tempdir::TempDir;
 use walkdir::{DirEntry, WalkDir};
 
-mod project {
-    use std::fs::read_to_string;
-
+pub mod project {
     use super::*;
+
+    #[derive(Debug)]
+    pub struct Config {
+        project_path: String,
+    }
+
+    impl Config {
+        pub fn build(args: &[String]) -> Result<Config, Box<dyn Error>> {
+            if args.len() < 2 {
+                return Err(String::from("Not enough arguments").into());
+            }
+
+            Ok(Config {
+                project_path: args[1].clone(),
+            })
+        }
+    }
 
     pub struct File {
         name: String,
@@ -74,9 +87,19 @@ mod project {
                 let file_type = entry.file_type();
 
                 if file_type.is_file() {
-                    let content = read_to_string(path)?;
-                    self.files
-                        .push(File::make(path.to_str().unwrap(), &content)?);
+                    match read_to_string(path) {
+                        Ok(content) => {
+                            self.files
+                                .push(File::make(path.to_str().unwrap(), &content)?);
+                        }
+                        Err(error) => {
+                            println!(
+                                "Error while reading {:#?}. Error = {:?}. Skipping it.",
+                                path.to_str(),
+                                error
+                            );
+                        }
+                    }
                 }
 
                 self.on_processed_file();
@@ -99,16 +122,28 @@ mod project {
         }
 
         fn on_processed_file(&mut self) {
-            if self.files.len() % 1000 == 0 {
+            if self.files.len() > 0 && self.files.len() % 1000 == 0 {
                 println!("Processed num. files: {}", self.files.len());
             }
         }
+    }
+
+    pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+        let path = Path::new(&config.project_path);
+        let mut project = Project::make(path)?;
+
+        project.scan_files()?;
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use tempdir::TempDir;
 
     #[test]
     fn cpp_file_parsing_test() -> Result<(), &'static str> {
