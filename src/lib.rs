@@ -195,7 +195,7 @@ class FooBar {{
         project.scan_files()?;
 
         // assert
-        assert_eq!(3, project.get_num_files());
+        assert_eq!(6, project.get_num_files());
 
         // cleanup
         for f in first_level_files
