@@ -30,6 +30,4 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-}
+mod tests {}

@@ -65,19 +65,20 @@ impl File {
 
 pub struct ProjectScanner<'a> {
     base_path: &'a Path,
-    files: Vec<File>,
+    processed_files: u64,
 }
 
 impl<'a> ProjectScanner<'a> {
     pub fn make(base_path: &Path) -> Result<ProjectScanner, Box<dyn Error>> {
         Ok(ProjectScanner {
             base_path: base_path,
-            files: Vec::new(),
+            processed_files: 0u64,
         })
     }
 
-    pub fn scan_files(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn scan_files(&mut self) -> Result<Vec<File>, Box<dyn Error>> {
         let walker = WalkDir::new(&self.base_path).into_iter();
+        let mut files = Vec::new();
         for entry in walker.filter_entry(|e| Self::is_dir_or_cpp_file(e)) {
             let entry = entry?;
             let path = entry.path();
@@ -86,8 +87,9 @@ impl<'a> ProjectScanner<'a> {
             if file_type.is_file() {
                 match read_to_string(path) {
                     Ok(content) => {
-                        self.files
-                            .push(File::make(path.to_str().unwrap(), &content)?);
+                        files.push(File::make(path.to_str().unwrap(), &content)?);
+
+                        self.on_processed_file();
                     }
                     Err(error) => {
                         println!(
@@ -98,15 +100,9 @@ impl<'a> ProjectScanner<'a> {
                     }
                 }
             }
-
-            self.on_processed_file();
         }
 
-        Ok(())
-    }
-
-    pub fn get_num_files(&self) -> usize {
-        self.files.len()
+        Ok(files)
     }
 
     fn is_dir_or_cpp_file(entry: &DirEntry) -> bool {
@@ -119,8 +115,9 @@ impl<'a> ProjectScanner<'a> {
     }
 
     fn on_processed_file(&mut self) {
-        if self.files.len() > 0 && self.files.len() % 1000 == 0 {
-            println!("Processed num. files: {}", self.files.len());
+        self.processed_files += 1;
+        if self.processed_files > 0 && self.processed_files % 1000 == 0 {
+            println!("Processed num. files: {}", self.processed_files);
         }
     }
 }
@@ -241,10 +238,10 @@ class FooBar {{
         let mut project = super::ProjectScanner::make(&temp_base_dir.path())?;
 
         // act
-        project.scan_files()?;
+        let files = project.scan_files()?;
 
         // assert
-        assert_eq!(6, project.get_num_files());
+        assert_eq!(6, files.len());
 
         // cleanup
         for f in first_level_files
