@@ -118,13 +118,20 @@ int main(void) {
         Ok(())
     }
 
-    fn create_cpp_files_in_path(path: &Path) -> Result<Vec<File>, Box<dyn Error>> {
-        let first_path = path.join("first.cpp");
-        let mut first = File::create(first_path)?;
+    fn create_file(
+        path: &Path,
+        name: &str,
+        content: &str,
+    ) -> Result<std::fs::File, Box<dyn Error>> {
+        let full_path = path.join(name);
+        let mut file = std::fs::File::create(full_path)?;
 
-        writeln!(
-            first,
-            "\
+        writeln!(file, "{}", content)?;
+        Ok(file)
+    }
+
+    fn create_cpp_files_in_path(path: &Path) -> Result<Vec<File>, Box<dyn Error>> {
+        let first_content = "\
 #include <iostream>
 #include \"third.h\"
 // #include \"some_random_header.h\"
@@ -133,30 +140,18 @@ void main() {{
     // commented out code
 }}
 
-"
-        )?;
+";
 
-        let second_path = path.join("second.cpp");
-        let mut second = File::create(second_path)?;
-
-        writeln!(
-            second,
-            "\
+        let second_content = "\
 #include \"third.h\"
 #include \"very_basic_header.h\"
 
 void foobar() {{
     // doing some internal stuff here
 }}
-"
-        )?;
+";
 
-        let third_path = path.join("third.h");
-        let mut third = File::create(third_path)?;
-
-        writeln!(
-            third,
-            "\
+        let third_content = "\
 #include \"some_random_header_too.h\"
 
 class FooBar {{
@@ -165,32 +160,55 @@ class FooBar {{
     void DoStuff() noexcept {{}};
 }};
 
-"
-        )?;
+";
+
+        let first = create_file(path, "first.cpp", first_content)?;
+        let second = create_file(path, "second.cpp", second_content)?;
+        let third = create_file(path, "third.cpp", third_content)?;
 
         Ok(vec![first, second, third])
+    }
+
+    fn create_dir_tree() -> Result<(TempDir, TempDir), Box<dyn Error>> {
+        let temp_dir = TempDir::new("scar_cpp_directory_parsing_test")
+            .map_err(|_| "Temporary directory creation error")?;
+
+        let inner_temp_dir =
+            TempDir::new_in(temp_dir.path(), "scar_cpp_inner_directory_parsing_test")
+                .map_err(|_| "Temporary inner directory creation error")?;
+
+        Ok((temp_dir, inner_temp_dir))
     }
 
     #[test]
     fn cpp_directory_parsing_test() -> Result<(), Box<dyn Error>> {
         // arrange
-        let temp_dir = TempDir::new("scar_cpp_directory_parsing_test")
-            .map_err(|_| "Temporary directory creation error")?;
 
-        let files = create_cpp_files_in_path(temp_dir.path())?;
+        let (temp_base_dir, temp_inner_dir) = create_dir_tree()?;
 
-        let mut project = project::Project::make(&temp_dir.path())?;
+        let first_level_files = create_cpp_files_in_path(temp_base_dir.path())?;
+        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path())?;
+
+        let mut project = project::Project::make(&temp_base_dir.path())?;
+
+        // act
         project.scan_files()?;
 
         // assert
         assert_eq!(3, project.get_num_files());
 
         // cleanup
-        for f in files {
+        for f in first_level_files
+            .into_iter()
+            .chain(second_level_files.into_iter())
+        {
             drop(f);
         }
 
-        temp_dir.close()?;
+        for d in [temp_inner_dir, temp_base_dir].into_iter() {
+            d.close()?;
+        }
+
         Ok(())
     }
 }
