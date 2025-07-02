@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 use tempdir::TempDir;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 mod project {
     use std::fs::read_to_string;
@@ -67,7 +67,8 @@ mod project {
         }
 
         pub fn scan_files(&mut self) -> Result<(), Box<dyn Error>> {
-            for entry in WalkDir::new(&self.base_path) {
+            let walker = WalkDir::new(&self.base_path).into_iter();
+            for entry in walker.filter_entry(|e| Self::is_dir_or_cpp_file(e)) {
                 let entry = entry?;
                 let path = entry.path();
                 let file_type = entry.file_type();
@@ -84,6 +85,15 @@ mod project {
 
         pub fn get_num_files(&self) -> usize {
             self.files.len()
+        }
+
+        fn is_dir_or_cpp_file(entry: &DirEntry) -> bool {
+            entry.file_type().is_dir()
+                || entry
+                    .file_name()
+                    .to_str()
+                    .map(|s| s.ends_with(".cpp") || s.ends_with(".h"))
+                    .unwrap_or(false)
         }
     }
 }
@@ -164,7 +174,7 @@ class FooBar {{
 
         let first = create_file(path, "first.cpp", first_content)?;
         let second = create_file(path, "second.cpp", second_content)?;
-        let third = create_file(path, "third.cpp", third_content)?;
+        let third = create_file(path, "third.h", third_content)?;
 
         Ok(vec![first, second, third])
     }
