@@ -78,6 +78,8 @@ mod project {
                     self.files
                         .push(File::make(path.to_str().unwrap(), &content)?);
                 }
+
+                self.on_processed_file();
             }
 
             Ok(())
@@ -94,6 +96,12 @@ mod project {
                     .to_str()
                     .map(|s| s.ends_with(".cpp") || s.ends_with(".h"))
                     .unwrap_or(false)
+        }
+
+        fn on_processed_file(&mut self) {
+            if self.files.len() % 1000 == 0 {
+                println!("Processed num. files: {}", self.files.len());
+            }
         }
     }
 }
