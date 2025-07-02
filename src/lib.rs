@@ -4,7 +4,7 @@ use std::fs::read_to_string;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
-pub mod project {
+pub mod project_scanner {
     use super::*;
 
     #[derive(Debug)]
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn cpp_file_parsing_test() -> Result<(), &'static str> {
         let file_name = "main.cpp";
-        let f = project::File::make(
+        let f = project_scanner::File::make(
             file_name,
             "\
 #include <iostream>
@@ -242,7 +242,7 @@ class FooBar {{
         let first_level_files = create_cpp_files_in_path(temp_base_dir.path())?;
         let second_level_files = create_cpp_files_in_path(temp_inner_dir.path())?;
 
-        let mut project = project::ProjectScanner::make(&temp_base_dir.path())?;
+        let mut project = project_scanner::ProjectScanner::make(&temp_base_dir.path())?;
 
         // act
         project.scan_files()?;
