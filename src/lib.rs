@@ -2,6 +2,7 @@ use std::error::Error;
 use std::path::Path;
 
 pub mod project_scanner;
+pub mod use_cases;
 
 #[derive(Debug)]
 pub struct Config {
