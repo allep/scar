@@ -1,10 +1,11 @@
 use crate::file::File;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::error::Error;
 
 pub struct DependencyAnalyzer<'a> {
     files: &'a [File],
-    modules_inclusion: HashMap<&'a str, Vec<&'a str>>,
+    modules_inclusion: HashMap<&'a str, HashSet<&'a str>>,
 }
 
 impl<'a> DependencyAnalyzer<'a> {
@@ -15,21 +16,27 @@ impl<'a> DependencyAnalyzer<'a> {
             let path = f.get_name();
             let current_file_name = Self::extract_filename_from_path(path);
 
-            let mut dependencies = Vec::new();
+            let mut dependencies = HashSet::new();
             f.get_used_modules().iter().for_each(|p| {
                 let dependency_name = Self::extract_filename_from_path(p);
-                dependencies.push(dependency_name);
+                dependencies.insert(dependency_name);
             });
 
             modules_inclusion
                 .entry(current_file_name)
-                .or_insert(Vec::new());
+                .or_insert(HashSet::new());
 
             for d in dependencies {
                 modules_inclusion
                     .entry(d)
-                    .and_modify(|v| v.push(path))
-                    .or_insert(vec![path]);
+                    .and_modify(|v| {
+                        v.insert(path);
+                    })
+                    .or_insert({
+                        let mut s = HashSet::new();
+                        s.insert(path);
+                        s
+                    });
             }
         }
 
@@ -39,7 +46,7 @@ impl<'a> DependencyAnalyzer<'a> {
         })
     }
 
-    pub fn get_inclusion_map(&self) -> &HashMap<&'a str, Vec<&'a str>> {
+    pub fn get_inclusion_map(&self) -> &HashMap<&'a str, HashSet<&'a str>> {
         &self.modules_inclusion
     }
 
