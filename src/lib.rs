@@ -36,7 +36,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let sorted_inclusions = analyzer.get_sorted_inclusion();
 
     println!("Sorted!");
-    for i in sorted_inclusions[..50].iter() {
+    for i in sorted_inclusions[..10].iter() {
         println!("Include found: {:?}", i);
     }
 
