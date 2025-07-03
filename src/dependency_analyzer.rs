@@ -118,6 +118,21 @@ void DoSomeStuff(uint8_t value) {}
 
         assert_eq!(5, inclusion_map.len());
 
+        let expected_main = HashSet::new();
+        assert_eq!(expected_main, inclusion_map["main.cpp"]);
+
+        let expected_foobar = HashSet::from(["main.cpp", "leviathan.h"]);
+        assert_eq!(expected_foobar, inclusion_map["foobar.h"]);
+
+        let expected_leviathan = HashSet::new();
+        assert_eq!(expected_leviathan, inclusion_map["leviathan.h"]);
+
+        let expected_iostream = HashSet::from(["main.cpp"]);
+        assert_eq!(expected_iostream, inclusion_map["iostream"]);
+
+        let expected_blablah = HashSet::from(["foobar.h"]);
+        assert_eq!(expected_blablah, inclusion_map["blablah.h"]);
+
         Ok(())
     }
 
