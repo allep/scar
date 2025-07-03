@@ -20,8 +20,7 @@ impl<'a> ProjectScanner<'a> {
     pub fn scan_files(&mut self) -> Result<Vec<File>, Box<dyn Error>> {
         let walker = WalkDir::new(&self.base_path).into_iter();
         let mut files = Vec::new();
-        for entry in walker.filter_entry(|e| Self::is_not_hidden(e) && Self::is_dir_or_cpp_file(e))
-        {
+        for entry in walker.filter_entry(|e| Self::is_valid_entry(e)) {
             let entry = entry?;
             let path = entry.path();
             let file_type = entry.file_type();
@@ -47,21 +46,17 @@ impl<'a> ProjectScanner<'a> {
         Ok(files)
     }
 
-    fn is_dir_or_cpp_file(entry: &DirEntry) -> bool {
-        entry.file_type().is_dir()
+    fn is_valid_entry(entry: &DirEntry) -> bool {
+        (entry.file_type().is_dir()
             || entry
                 .file_name()
                 .to_str()
-                .map(|s| s.ends_with(".cpp") || s.ends_with(".h"))
-                .unwrap_or(false)
+                .map(|s| Self::is_valid_file_path(s))
+                .unwrap_or(false))
     }
 
-    fn is_not_hidden(entry: &DirEntry) -> bool {
-        entry
-            .file_name()
-            .to_str()
-            .map(|s| !s.starts_with("."))
-            .unwrap_or(false)
+    fn is_valid_file_path(path: &str) -> bool {
+        !path.starts_with(".") && (path.ends_with(".cpp") || path.ends_with(".h"))
     }
 
     fn on_processed_file(&mut self) {
@@ -171,5 +166,29 @@ class FooBar {{
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn valid_cpp_file_path_test() {
+        let valid_path = "/media/workspace/file.cpp";
+        assert!(ProjectScanner::is_valid_file_path(valid_path));
+    }
+
+    #[test]
+    fn valid_header_file_path_test() {
+        let valid_path = "/media/workspace/file.h";
+        assert!(ProjectScanner::is_valid_file_path(valid_path));
+    }
+
+    #[test]
+    fn invalid_hidden_directory_path_test() {
+        let invalid_path = ".media/workspace/file.h";
+        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
+    }
+
+    #[test]
+    fn invalid_hidden_file_path_test() {
+        let invalid_path = ".file.h";
+        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
     }
 }
