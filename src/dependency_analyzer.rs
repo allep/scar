@@ -9,9 +9,33 @@ pub struct DependencyAnalyzer<'a> {
 
 impl<'a> DependencyAnalyzer<'a> {
     pub fn make(files: &'a [File]) -> Result<DependencyAnalyzer<'a>, Box<dyn Error>> {
+        let mut modules_inclusion = HashMap::new();
+
+        for f in files {
+            let path = f.get_name();
+            let current_file_name = Self::extract_filename_from_path(path);
+
+            let mut dependencies = Vec::new();
+            f.get_used_modules().iter().for_each(|p| {
+                let dependency_name = Self::extract_filename_from_path(p);
+                dependencies.push(dependency_name);
+            });
+
+            modules_inclusion
+                .entry(current_file_name)
+                .or_insert(Vec::new());
+
+            for d in dependencies {
+                modules_inclusion
+                    .entry(d)
+                    .and_modify(|v| v.push(path))
+                    .or_insert(vec![path]);
+            }
+        }
+
         Ok(DependencyAnalyzer {
-            files: files,
-            modules_inclusion: HashMap::new(),
+            files,
+            modules_inclusion,
         })
     }
 
@@ -85,7 +109,7 @@ void DoSomeStuff(uint8_t value) {}
         let analyzer = DependencyAnalyzer::make(&files)?;
         let inclusion_map = analyzer.get_inclusion_map();
 
-        assert_eq!(3, inclusion_map.len());
+        assert_eq!(5, inclusion_map.len());
 
         Ok(())
     }
