@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::path::Path;
 
+pub mod dependency_analyzer;
 pub mod file;
-pub mod modules_analyzer;
 pub mod project_scanner;
 pub mod use_cases;
 

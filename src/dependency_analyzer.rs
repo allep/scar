@@ -2,12 +2,12 @@ use crate::file::File;
 use std::collections::HashMap;
 use std::error::Error;
 
-pub struct ModulesAnalyzer<'a> {
+pub struct DependencyAnalyzer<'a> {
     modules_inclusion: HashMap<&'a str, Vec<&'a str>>,
 }
 
-impl<'a> ModulesAnalyzer<'a> {
-    pub fn make(files: &'a [File]) -> Result<ModulesAnalyzer, Box<dyn Error>> {
+impl<'a> DependencyAnalyzer<'a> {
+    pub fn make(files: &'a [File]) -> Result<DependencyAnalyzer, Box<dyn Error>> {
         todo!()
     }
 
@@ -75,7 +75,7 @@ void DoSomeStuff(uint8_t value) {}
     fn simple_parsing_test() -> Result<(), Box<dyn Error>> {
         let files = create_sample_files()?;
 
-        let analyzer = ModulesAnalyzer::make(&files)?;
+        let analyzer = DependencyAnalyzer::make(&files)?;
 
         Ok(())
     }
@@ -85,7 +85,7 @@ void DoSomeStuff(uint8_t value) {}
         let simple_path = "include/foobar.h";
         assert_eq!(
             "foobar.h",
-            ModulesAnalyzer::extract_filename_from_path(simple_path)
+            DependencyAnalyzer::extract_filename_from_path(simple_path)
         );
     }
 
@@ -94,7 +94,7 @@ void DoSomeStuff(uint8_t value) {}
         let simple_path = "foobar.h";
         assert_eq!(
             "foobar.h",
-            ModulesAnalyzer::extract_filename_from_path(simple_path)
+            DependencyAnalyzer::extract_filename_from_path(simple_path)
         );
     }
 
@@ -106,7 +106,7 @@ void DoSomeStuff(uint8_t value) {}
         let simple_path = "include\\foobar.h";
         assert_eq!(
             "include\\foobar.h",
-            ModulesAnalyzer::extract_filename_from_path(simple_path)
+            DependencyAnalyzer::extract_filename_from_path(simple_path)
         );
     }
 }
