@@ -44,6 +44,8 @@ impl File {
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
+
     #[test]
     fn cpp_file_parsing_test() -> Result<(), &'static str> {
         let file_name = "main.cpp";
@@ -64,6 +66,35 @@ int main(void) {
         assert_eq!(file_name, f.get_name());
         assert_eq!(
             vec![String::from("iostream"), String::from("foobar.h")],
+            f.get_used_modules()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn cpp_file_parsing_test_nested() -> Result<(), Box<dyn Error>> {
+        let file_name = "main.cpp";
+        let f = super::File::make(
+            file_name,
+            "\
+#include <iostream>
+#include \"include_folder/foobar.h\"
+//#include \"commented_out.h\"
+/*#include \"another_commented_out.h\"
+
+int main(void) {
+    printf(\"Hello world\");
+    return 0;
+};",
+        )?;
+
+        assert_eq!(file_name, f.get_name());
+        assert_eq!(
+            vec![
+                String::from("iostream"),
+                String::from("include_folder/foobar.h")
+            ],
             f.get_used_modules()
         );
 
