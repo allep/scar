@@ -50,7 +50,7 @@ impl<'a> DependencyAnalyzer<'a> {
         &self.modules_inclusion
     }
 
-    pub fn get_sorted_inclusion(&self) -> Vec<&str> {
+    pub fn get_sorted_inclusion(&self) -> Vec<DependencyEntry> {
         let mut included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
         // decreasing order: from most to least included
         included_files.sort_by(|&a, &b| {
@@ -60,6 +60,17 @@ impl<'a> DependencyAnalyzer<'a> {
         });
 
         included_files
+            .into_iter()
+            .map(|f| {
+                let file_name = f;
+                let including_files_paths = self.modules_inclusion[f].clone();
+
+                DependencyEntry {
+                    file_name,
+                    including_files_paths,
+                }
+            })
+            .collect()
     }
 
     pub fn extract_filename_from_path(path: &str) -> &str {
@@ -68,6 +79,12 @@ impl<'a> DependencyAnalyzer<'a> {
             None => path,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct DependencyEntry<'a> {
+    file_name: &'a str,
+    including_files_paths: HashSet<&'a str>,
 }
 
 #[cfg(test)]
@@ -185,16 +202,21 @@ void DoSomeStuff(uint8_t value) {}
         let analyzer = DependencyAnalyzer::make(&files)?;
         let sorted_list = analyzer.get_sorted_inclusion();
 
-        assert_eq!(
-            vec![
-                "foobar.h",
-                "iostream",
-                "blablah.h",
-                "main.cpp",
-                "leviathan.h"
-            ],
-            sorted_list
-        );
+        let expected = [
+            ("foobar.h", 2),
+            ("iostream", 1),
+            ("blablah.h", 1),
+            ("main.cpp", 0),
+            ("leviathan.h", 0),
+        ];
+
+        assert_eq!(5, sorted_list.len());
+
+        for e in expected.into_iter() {
+            assert!(sorted_list
+                .iter()
+                .any(|entry| entry.file_name == e.0 && entry.including_files_paths.len() == e.1));
+        }
 
         Ok(())
     }

@@ -37,7 +37,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
     println!("Sorted!");
     for i in sorted_inclusions[..50].iter() {
-        println!("Include found: {}", i);
+        println!("Include found: {:?}", i);
     }
 
     Ok(())
