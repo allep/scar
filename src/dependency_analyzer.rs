@@ -87,6 +87,16 @@ pub struct DependencyEntry<'a> {
     including_files_paths: HashSet<&'a str>,
 }
 
+impl<'a> DependencyEntry<'a> {
+    pub fn get_file_name(&self) -> &'a str {
+        self.file_name
+    }
+
+    pub fn get_including_file_paths(&self) -> &HashSet<&'a str> {
+        &self.including_files_paths
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

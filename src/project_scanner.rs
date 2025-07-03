@@ -20,7 +20,8 @@ impl<'a> ProjectScanner<'a> {
     pub fn scan_files(&mut self) -> Result<Vec<File>, Box<dyn Error>> {
         let walker = WalkDir::new(&self.base_path).into_iter();
         let mut files = Vec::new();
-        for entry in walker.filter_entry(|e| Self::is_dir_or_cpp_file(e)) {
+        for entry in walker.filter_entry(|e| Self::is_not_hidden(e) && Self::is_dir_or_cpp_file(e))
+        {
             let entry = entry?;
             let path = entry.path();
             let file_type = entry.file_type();
@@ -53,6 +54,14 @@ impl<'a> ProjectScanner<'a> {
                 .to_str()
                 .map(|s| s.ends_with(".cpp") || s.ends_with(".h"))
                 .unwrap_or(false)
+    }
+
+    fn is_not_hidden(entry: &DirEntry) -> bool {
+        entry
+            .file_name()
+            .to_str()
+            .map(|s| !s.starts_with("."))
+            .unwrap_or(false)
     }
 
     fn on_processed_file(&mut self) {

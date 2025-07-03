@@ -36,8 +36,12 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let sorted_inclusions = analyzer.get_sorted_inclusion();
 
     println!("Sorted!");
-    for i in sorted_inclusions[..10].iter() {
-        println!("Include found: {:?}", i);
+    for i in sorted_inclusions[..50].iter() {
+        println!(
+            "Include found: {}, num inclusions: {}",
+            i.get_file_name(),
+            i.get_including_file_paths().len()
+        );
     }
 
     Ok(())
