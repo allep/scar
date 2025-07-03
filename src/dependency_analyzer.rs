@@ -50,6 +50,18 @@ impl<'a> DependencyAnalyzer<'a> {
         &self.modules_inclusion
     }
 
+    pub fn get_sorted_inclusion(&self) -> Vec<&str> {
+        let mut included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
+        // decreasing order: from most to least included
+        included_files.sort_by(|&a, &b| {
+            self.modules_inclusion[b]
+                .len()
+                .cmp(&self.modules_inclusion[a].len())
+        });
+
+        included_files
+    }
+
     pub fn extract_filename_from_path(path: &str) -> &str {
         match path.split("/").last() {
             Some(last_token) => last_token,
@@ -164,5 +176,26 @@ void DoSomeStuff(uint8_t value) {}
             "include\\foobar.h",
             DependencyAnalyzer::extract_filename_from_path(simple_path)
         );
+    }
+
+    #[test]
+    fn top_included_sort_test() -> Result<(), Box<dyn Error>> {
+        let files = create_sample_files()?;
+
+        let analyzer = DependencyAnalyzer::make(&files)?;
+        let sorted_list = analyzer.get_sorted_inclusion();
+
+        assert_eq!(
+            vec![
+                "foobar.h",
+                "iostream",
+                "blablah.h",
+                "main.cpp",
+                "leviathan.h"
+            ],
+            sorted_list
+        );
+
+        Ok(())
     }
 }
