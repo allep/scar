@@ -3,12 +3,20 @@ use std::collections::HashMap;
 use std::error::Error;
 
 pub struct DependencyAnalyzer<'a> {
+    files: &'a [File],
     modules_inclusion: HashMap<&'a str, Vec<&'a str>>,
 }
 
 impl<'a> DependencyAnalyzer<'a> {
-    pub fn make(files: &'a [File]) -> Result<DependencyAnalyzer, Box<dyn Error>> {
-        todo!()
+    pub fn make(files: &'a [File]) -> Result<DependencyAnalyzer<'a>, Box<dyn Error>> {
+        Ok(DependencyAnalyzer {
+            files: files,
+            modules_inclusion: HashMap::new(),
+        })
+    }
+
+    pub fn get_inclusion_map(&self) -> &HashMap<&'a str, Vec<&'a str>> {
+        &self.modules_inclusion
     }
 
     pub fn extract_filename_from_path(path: &str) -> &str {
@@ -70,12 +78,14 @@ void DoSomeStuff(uint8_t value) {}
         Ok(vec![first, second, third])
     }
 
-    #[ignore]
     #[test]
     fn simple_parsing_test() -> Result<(), Box<dyn Error>> {
         let files = create_sample_files()?;
 
         let analyzer = DependencyAnalyzer::make(&files)?;
+        let inclusion_map = analyzer.get_inclusion_map();
+
+        assert_eq!(3, inclusion_map.len());
 
         Ok(())
     }
