@@ -3,6 +3,31 @@ use std::error::Error;
 use std::fs::read_to_string;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
+use lazy_static;
+use std::collections::HashMap;
+
+
+lazy_static::lazy_static! {
+    static ref CONFIG: HashMap<String, Vec<String>> = {
+        let mut config_map = HashMap::new();
+        config_map.insert(
+            String::from("white_list"),
+            vec![
+                String::from("Source"),
+            ],
+        );
+        config_map.insert(
+            String::from("black_list"),
+            vec![
+                String::from("USQLite"),
+                String::from("Intermediate"),
+                String::from("Plugins"),
+                String::from("Binaries"),
+            ],
+        );
+        config_map
+    };
+}
 
 pub struct ProjectScanner<'a> {
     base_path: &'a Path,
@@ -53,6 +78,8 @@ impl<'a> ProjectScanner<'a> {
                 .to_str()
                 .map(|s| Self::is_valid_file_path(s))
                 .unwrap_or(false))
+        && !Self::is_blacklisted(entry)
+        //&& Self::is_whitelisted(entry)
     }
 
     fn is_valid_file_path(path: &str) -> bool {
@@ -65,6 +92,29 @@ impl<'a> ProjectScanner<'a> {
             println!("Processed num. files: {}", self.processed_files);
         }
     }
+
+    fn is_blacklisted(entry: &DirEntry) -> bool {
+        let path = entry.path().to_str().map(|s| s.to_string()).unwrap_or_default();
+
+        let is_blacklisted = CONFIG
+            .get("black_list")
+            .map_or(false, |black_list| {
+                black_list.iter().any(|bl| path.contains(bl))
+            });
+
+        is_blacklisted
+    }
+
+    fn is_whitelisted(entry: &DirEntry) -> bool {
+        let path = entry.path().to_str().map(|s| s.to_string()).unwrap_or_default();
+
+        CONFIG
+            .get("white_list")
+            .map_or(true, |white_list| {
+                white_list.iter().all(|wl| path.contains(wl))
+            })
+    }
+
 }
 
 #[cfg(test)]
@@ -72,7 +122,16 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
+    use std::path;
+    use std::path::PathBuf;
     use tempdir::TempDir;
+    use std::path::Path;
+    use lazy_static::lazy_static;
+
+    lazy_static! {
+        static ref TEST_PATH: PathBuf = PathBuf::from("/media/workspace/");
+        static ref INVALID_TEST_PATH: PathBuf = PathBuf::from(".media/workspace/");
+    }
 
     fn create_file(
         path: &Path,
@@ -170,25 +229,25 @@ class FooBar {{
 
     #[test]
     fn valid_cpp_file_path_test() {
-        let valid_path = "/media/workspace/file.cpp";
-        assert!(ProjectScanner::is_valid_file_path(valid_path));
+        let valid_path = TEST_PATH.join("file.cpp");
+        assert!(ProjectScanner::is_valid_file_path(valid_path.to_str().unwrap()));
     }
 
     #[test]
     fn valid_header_file_path_test() {
-        let valid_path = "/media/workspace/file.h";
-        assert!(ProjectScanner::is_valid_file_path(valid_path));
+        let valid_path = TEST_PATH.join("file.h");
+        assert!(ProjectScanner::is_valid_file_path(valid_path.to_str().unwrap()));
     }
 
     #[test]
     fn invalid_hidden_directory_path_test() {
-        let invalid_path = ".media/workspace/file.h";
-        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
+        let invalid_path = INVALID_TEST_PATH.join("file.h");
+        assert!(!ProjectScanner::is_valid_file_path(invalid_path.to_str().unwrap()));
     }
 
     #[test]
     fn invalid_hidden_file_path_test() {
-        let invalid_path = ".file.h";
-        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
+        let invalid_path = INVALID_TEST_PATH.join(".file.cpp");
+        assert!(!ProjectScanner::is_valid_file_path(invalid_path.to_str().unwrap()));
     }
 }

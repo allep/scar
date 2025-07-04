@@ -7,4 +7,4 @@ edition = "2021"
 regex = "1.10"
 tempdir = "0.3"
 walkdir = "2.5.0"
-
+lazy_static = "1.4"
