@@ -5,6 +5,13 @@ use std::error::Error;
 
 pub struct DependencyAnalyzer<'a> {
     _files: &'a [File],
+
+    /**
+     * The hashmap containing dependencies.
+     * - key: the dependency file (e.g., "stdio.h")
+     * - value: a set of files directly including the dependency file (e.g., "main.cpp",
+     * "foobar.cpp")
+     */
     modules_inclusion: HashMap<&'a str, HashSet<&'a str>>,
 }
 
