@@ -50,6 +50,11 @@ impl<'a> DependencyAnalyzer<'a> {
         &self.modules_inclusion
     }
 
+    /**
+     * Returns the list of direct inclusions for the current file.
+     * Useful when the actual number of direct inclusions is needed, without counting for multiple
+     * levels of inclusions.
+     */
     pub fn get_sorted_inclusion(&self) -> Vec<DependencyEntry> {
         let mut included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
         // decreasing order: from most to least included
@@ -71,6 +76,14 @@ impl<'a> DependencyAnalyzer<'a> {
                 }
             })
             .collect()
+    }
+
+    /**
+     * Returns the list of dependency impacts, i.e., the actual number of files impacted by the
+     * current file (considering multiple-levels of inclusions).
+     */
+    pub fn get_sorted_impact(&self) -> Vec<DependencyEntry> {
+        todo!()
     }
 
     pub fn extract_filename_from_path(path: &str) -> &str {
@@ -224,6 +237,32 @@ void DoSomeStuff(uint8_t value) {}
 
         for e in expected.into_iter() {
             assert!(sorted_list
+                .iter()
+                .any(|entry| entry.file_name == e.0 && entry.including_files_paths.len() == e.1));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn top_impact_sort_test() -> Result<(), Box<dyn Error>> {
+        let files = create_sample_files()?;
+
+        let analyzer = DependencyAnalyzer::make(&files)?;
+        let sorted_impacts = analyzer.get_sorted_impact();
+
+        let expected = [
+            ("foobar.h", 2),
+            ("iostream", 1),
+            ("blablah.h", 1),
+            ("main.cpp", 0),
+            ("leviathan.h", 0),
+        ];
+
+        assert_eq!(5, sorted_impacts.len());
+
+        for e in expected.into_iter() {
+            assert!(sorted_impacts
                 .iter()
                 .any(|entry| entry.file_name == e.0 && entry.including_files_paths.len() == e.1));
         }
