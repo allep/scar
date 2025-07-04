@@ -158,7 +158,17 @@ void DoSomeStuff(uint8_t value) {}
 ",
         )?;
 
-        Ok(vec![first, second, third])
+        let fourth_name = "blablah.h";
+        let fourth = File::make(
+            fourth_name,
+            "\
+namespace BlaBlah {
+
+}
+",
+        )?;
+
+        Ok(vec![first, second, third, fourth])
     }
 
     #[test]
