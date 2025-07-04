@@ -7,35 +7,38 @@ pub mod project_scanner;
 pub mod use_cases;
 
 #[derive(Debug)]
-pub struct Config {
-    project_path: String,
-    is_topn_analyzer: bool,
+pub struct Config<'a> {
+    project_path: &'a str,
+    mode: ScarMode,
 }
 
-impl Config {
-    pub fn build(args: &[String]) -> Result<Config, Box<dyn Error>> {
-        if args.len() < 2 {
-            return Err(String::from("Not enough arguments").into());
+#[derive(Debug)]
+enum ScarMode {
+    TopNAnalisys(usize),
+}
+
+impl<'a> Config<'a> {
+    pub fn build(
+        path: &'a str,
+        is_topn: bool,
+        output_size: usize,
+    ) -> Result<Config<'a>, Box<dyn Error>> {
+        if is_topn {
+            return Ok(Config {
+                project_path: path,
+                mode: ScarMode::TopNAnalisys(output_size),
+            });
         }
 
-        // check mode
-        if args.len() > 2 {
-            Ok(Config {
-                project_path: args[1].clone(),
-                is_topn_analyzer: args[2] == "-t",
-            })
-        } else {
-            Ok(Config {
-                project_path: args[1].clone(),
-                is_topn_analyzer: false,
-            })
-        }
+        Err("Invalid input mode.".into())
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    if config.is_topn_analyzer {
-        TopNUseCase::do_sorted_topn_inclusions(&config.project_path, 10)?;
+    match config.mode {
+        ScarMode::TopNAnalisys(output_size) => {
+            TopNUseCase::do_sorted_topn_inclusions(config.project_path, output_size)?;
+        }
     }
 
     Ok(())
