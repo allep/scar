@@ -27,4 +27,8 @@ impl TopNUseCase {
 
         Ok(())
     }
+
+    pub fn do_sorted_topn_impact(path: &str, num: usize) -> Result<(), Box<dyn Error>> {
+        todo!()
+    }
 }

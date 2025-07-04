@@ -5,6 +5,13 @@ use std::error::Error;
 
 pub struct DependencyAnalyzer<'a> {
     _files: &'a [File],
+
+    /**
+     * The hashmap containing dependencies.
+     * - key: the dependency file (e.g., "stdio.h")
+     * - value: a set of files directly including the dependency file (e.g., "main.cpp",
+     * "foobar.cpp")
+     */
     modules_inclusion: HashMap<&'a str, HashSet<&'a str>>,
 }
 
@@ -50,6 +57,11 @@ impl<'a> DependencyAnalyzer<'a> {
         &self.modules_inclusion
     }
 
+    /**
+     * Returns the list of direct inclusions for the current file.
+     * Useful when the actual number of direct inclusions is needed, without counting for multiple
+     * levels of inclusions.
+     */
     pub fn get_sorted_inclusion(&self) -> Vec<DependencyEntry> {
         let mut included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
         // decreasing order: from most to least included
@@ -73,11 +85,82 @@ impl<'a> DependencyAnalyzer<'a> {
             .collect()
     }
 
+    /**
+     * Returns the list of dependency impacts, i.e., the actual number of files impacted by the
+     * current file (considering multiple-levels of inclusions).
+     */
+    pub fn get_sorted_impact(&self) -> Vec<DependencyEntry> {
+        let included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
+        assert!(!included_files.is_empty());
+
+        let start_node = "foobar.h";
+        match self.dfs_tree(start_node) {
+            Ok(tree) => {
+                println!("\nDFS tree from {}", start_node);
+                tree.print_tree(start_node, 0);
+
+                println!("\nVisit order: {:?}", tree.visit_order);
+
+                println!("\nTree representation:");
+                for (parent, children) in &tree.tree {
+                    println!("  {} -> {:?}", parent, children);
+                }
+            }
+            Err(e) => println!("Error while computing sorted impact: {}", e),
+        }
+
+        Vec::new()
+    }
+
     pub fn extract_filename_from_path(path: &str) -> &str {
         match path.split("/").last() {
             Some(last_token) => last_token,
             None => path,
         }
+    }
+
+    fn dfs_tree(&self, start_node: &'a str) -> Result<DFSTree, Box<dyn Error>> {
+        assert!(!self.modules_inclusion.is_empty());
+
+        if !self.modules_inclusion.contains_key(start_node) {
+            return Err(format!("Starting node {} not found.", start_node).into());
+        }
+
+        let mut visited = HashSet::new();
+        let mut dfs_tree = DFSTree::make();
+
+        fn dfs_recursive<'a>(
+            current: &'a str,
+            parent: Option<&'a str>,
+            adj_list: &HashMap<&'a str, HashSet<&'a str>>,
+            visited: &mut HashSet<&'a str>,
+            tree: &mut DFSTree<'a>,
+        ) {
+            visited.insert(current);
+            tree.visit_order.push(current);
+
+            if let Some(p) = parent {
+                tree.add_edge(p, current);
+            }
+
+            if let Some(neighbors) = adj_list.get(current) {
+                for neighbor in neighbors {
+                    if !visited.contains(neighbor) {
+                        dfs_recursive(neighbor, Some(current), adj_list, visited, tree);
+                    }
+                }
+            }
+        }
+
+        dfs_recursive(
+            start_node,
+            None,
+            &self.modules_inclusion,
+            &mut visited,
+            &mut dfs_tree,
+        );
+
+        Ok(dfs_tree)
     }
 }
 
@@ -94,6 +177,34 @@ impl<'a> DependencyEntry<'a> {
 
     pub fn get_including_file_paths(&self) -> &HashSet<&'a str> {
         &self.including_files_paths
+    }
+}
+
+#[derive(Debug)]
+struct DFSTree<'a> {
+    tree: HashMap<&'a str, Vec<&'a str>>,
+    visit_order: Vec<&'a str>,
+}
+
+impl<'a> DFSTree<'a> {
+    fn make() -> Self {
+        DFSTree {
+            tree: HashMap::new(),
+            visit_order: Vec::new(),
+        }
+    }
+
+    fn add_edge(&mut self, parent: &'a str, child: &'a str) {
+        self.tree.entry(parent).or_insert_with(Vec::new).push(child);
+    }
+
+    fn print_tree(&self, node: &str, level: usize) {
+        println!("{}{}", "  ".repeat(level), node);
+        if let Some(children) = self.tree.get(node) {
+            for child in children {
+                self.print_tree(child, level + 1);
+            }
+        }
     }
 }
 
@@ -145,7 +256,17 @@ void DoSomeStuff(uint8_t value) {}
 ",
         )?;
 
-        Ok(vec![first, second, third])
+        let fourth_name = "blablah.h";
+        let fourth = File::make(
+            fourth_name,
+            "\
+namespace BlaBlah {
+
+}
+",
+        )?;
+
+        Ok(vec![first, second, third, fourth])
     }
 
     #[test]
@@ -224,6 +345,32 @@ void DoSomeStuff(uint8_t value) {}
 
         for e in expected.into_iter() {
             assert!(sorted_list
+                .iter()
+                .any(|entry| entry.file_name == e.0 && entry.including_files_paths.len() == e.1));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn top_impact_sort_test() -> Result<(), Box<dyn Error>> {
+        let files = create_sample_files()?;
+
+        let analyzer = DependencyAnalyzer::make(&files)?;
+        let sorted_impacts = analyzer.get_sorted_impact();
+
+        let expected = [
+            ("foobar.h", 2),
+            ("iostream", 1),
+            ("blablah.h", 1),
+            ("main.cpp", 0),
+            ("leviathan.h", 0),
+        ];
+
+        assert_eq!(5, sorted_impacts.len());
+
+        for e in expected.into_iter() {
+            assert!(sorted_impacts
                 .iter()
                 .any(|entry| entry.file_name == e.0 && entry.including_files_paths.len() == e.1));
         }
