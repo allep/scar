@@ -4,8 +4,8 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     println!("--- Source Code Analyzer ---");
 
     let args: Vec<String> = env::args().collect();
-    let config = scar::project_scanner::Config::build(&args)?;
-    scar::project_scanner::run(config)?;
+    let config = scar::Config::build(&args)?;
+    scar::run(config)?;
 
     Ok(())
 }

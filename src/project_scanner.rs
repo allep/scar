@@ -1,67 +1,8 @@
-use regex::Regex;
+use crate::file::File;
 use std::error::Error;
 use std::fs::read_to_string;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
-
-#[derive(Debug)]
-pub struct Config {
-    project_path: String,
-}
-
-impl Config {
-    pub fn build(args: &[String]) -> Result<Config, Box<dyn Error>> {
-        if args.len() < 2 {
-            return Err(String::from("Not enough arguments").into());
-        }
-
-        Ok(Config {
-            project_path: args[1].clone(),
-        })
-    }
-}
-
-pub struct File {
-    name: String,
-    used_modules: Vec<String>,
-}
-
-impl File {
-    pub fn make(name: &str, file_content: &str) -> Result<File, &'static str> {
-        let used_modules = File::make_used_modules(file_content)?;
-
-        Ok(File {
-            name: String::from(name),
-            used_modules: used_modules,
-        })
-    }
-
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn get_used_modules(&self) -> &[String] {
-        &self.used_modules
-    }
-
-    fn make_used_modules(file_content: &str) -> Result<Vec<String>, &'static str> {
-        let re = Regex::new(r#"^\s*#include\s*[<"](.*?)[>"](?:\s*//.*)?$"#)
-            .map_err(|_| "Error in regex creation")?;
-
-        let used_modules = file_content
-            .lines()
-            .filter(|row| !row.trim_start().starts_with("//"))
-            .filter(|row| !row.trim_start().starts_with("/*"))
-            .filter_map(|row| {
-                re.captures(row)
-                    .and_then(|captures| captures.get(1))
-                    .map(|m| m.as_str().to_string())
-            })
-            .collect();
-
-        Ok(used_modules)
-    }
-}
 
 pub struct ProjectScanner<'a> {
     base_path: &'a Path,
@@ -79,7 +20,7 @@ impl<'a> ProjectScanner<'a> {
     pub fn scan_files(&mut self) -> Result<Vec<File>, Box<dyn Error>> {
         let walker = WalkDir::new(&self.base_path).into_iter();
         let mut files = Vec::new();
-        for entry in walker.filter_entry(|e| Self::is_dir_or_cpp_file(e)) {
+        for entry in walker.filter_entry(|e| Self::is_valid_entry(e)) {
             let entry = entry?;
             let path = entry.path();
             let file_type = entry.file_type();
@@ -105,13 +46,17 @@ impl<'a> ProjectScanner<'a> {
         Ok(files)
     }
 
-    fn is_dir_or_cpp_file(entry: &DirEntry) -> bool {
-        entry.file_type().is_dir()
+    fn is_valid_entry(entry: &DirEntry) -> bool {
+        (entry.file_type().is_dir()
             || entry
                 .file_name()
                 .to_str()
-                .map(|s| s.ends_with(".cpp") || s.ends_with(".h"))
-                .unwrap_or(false)
+                .map(|s| Self::is_valid_file_path(s))
+                .unwrap_or(false))
+    }
+
+    fn is_valid_file_path(path: &str) -> bool {
+        !path.starts_with(".") && (path.ends_with(".cpp") || path.ends_with(".h"))
     }
 
     fn on_processed_file(&mut self) {
@@ -122,47 +67,12 @@ impl<'a> ProjectScanner<'a> {
     }
 }
 
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let path = Path::new(&config.project_path);
-    let mut project = ProjectScanner::make(path)?;
-
-    project.scan_files()?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
     use tempdir::TempDir;
-
-    #[test]
-    fn cpp_file_parsing_test() -> Result<(), &'static str> {
-        let file_name = "main.cpp";
-        let f = super::File::make(
-            file_name,
-            "\
-#include <iostream>
-#include \"foobar.h\"
-//#include \"commented_out.h\"
-/*#include \"another_commented_out.h\"
-
-int main(void) {
-    printf(\"Hello world\");
-    return 0;
-};",
-        )?;
-
-        assert_eq!(file_name, f.get_name());
-        assert_eq!(
-            vec![String::from("iostream"), String::from("foobar.h")],
-            f.get_used_modules()
-        );
-
-        Ok(())
-    }
 
     fn create_file(
         path: &Path,
@@ -256,5 +166,29 @@ class FooBar {{
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn valid_cpp_file_path_test() {
+        let valid_path = "/media/workspace/file.cpp";
+        assert!(ProjectScanner::is_valid_file_path(valid_path));
+    }
+
+    #[test]
+    fn valid_header_file_path_test() {
+        let valid_path = "/media/workspace/file.h";
+        assert!(ProjectScanner::is_valid_file_path(valid_path));
+    }
+
+    #[test]
+    fn invalid_hidden_directory_path_test() {
+        let invalid_path = ".media/workspace/file.h";
+        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
+    }
+
+    #[test]
+    fn invalid_hidden_file_path_test() {
+        let invalid_path = ".file.h";
+        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
     }
 }
