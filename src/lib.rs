@@ -1,6 +1,5 @@
-use dependency_analyzer::DependencyAnalyzer;
 use std::error::Error;
-use std::path::Path;
+use use_cases::TopNUseCase;
 
 pub mod dependency_analyzer;
 pub mod file;
@@ -8,44 +7,39 @@ pub mod project_scanner;
 pub mod use_cases;
 
 #[derive(Debug)]
-pub struct Config {
-    project_path: String,
+pub struct Config<'a> {
+    project_path: &'a str,
+    mode: ScarMode,
 }
 
-impl Config {
-    pub fn build(args: &[String]) -> Result<Config, Box<dyn Error>> {
-        if args.len() < 2 {
-            return Err(String::from("Not enough arguments").into());
+#[derive(Debug)]
+enum ScarMode {
+    TopNAnalisys(usize),
+}
+
+impl<'a> Config<'a> {
+    pub fn build(
+        path: &'a str,
+        is_topn: bool,
+        output_size: usize,
+    ) -> Result<Config<'a>, Box<dyn Error>> {
+        if is_topn {
+            return Ok(Config {
+                project_path: path,
+                mode: ScarMode::TopNAnalisys(output_size),
+            });
         }
 
-        Ok(Config {
-            project_path: args[1].clone(),
-        })
+        Err("Invalid input mode.".into())
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let path = Path::new(&config.project_path);
-    let mut project = project_scanner::ProjectScanner::make(path)?;
-
-    // FIXME: this should go in a use-case
-    let files = project.scan_files()?;
-    let analyzer = DependencyAnalyzer::make(&files)?;
-
-    println!("Sorting ...");
-    let sorted_inclusions = analyzer.get_sorted_inclusion();
-
-    println!("Sorted!");
-    for i in sorted_inclusions[..50].iter() {
-        println!(
-            "Include found: {}, num inclusions: {}",
-            i.get_file_name(),
-            i.get_including_file_paths().len()
-        );
+    match config.mode {
+        ScarMode::TopNAnalisys(output_size) => {
+            TopNUseCase::do_sorted_topn_inclusions(config.project_path, output_size)?;
+        }
     }
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {}

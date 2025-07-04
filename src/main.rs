@@ -1,10 +1,25 @@
-use std::{env, error};
+use clap::Parser;
+use std::error;
+
+#[derive(Parser)]
+#[command(name = "scar")]
+struct Args {
+    #[arg(short = 't', long = "topn")]
+    topn_analyzer: bool,
+
+    #[arg(short = 'p', long = "path")]
+    project_path: String,
+
+    #[arg(short = 'n', long = "num", default_value = "42")]
+    output_size: usize,
+}
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     println!("--- Source Code Analyzer ---");
 
-    let args: Vec<String> = env::args().collect();
-    let config = scar::Config::build(&args)?;
+    let args = Args::parse();
+
+    let config = scar::Config::build(&args.project_path, args.topn_analyzer, args.output_size)?;
     scar::run(config)?;
 
     Ok(())

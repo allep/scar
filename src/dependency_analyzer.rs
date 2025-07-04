@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::error::Error;
 
 pub struct DependencyAnalyzer<'a> {
-    files: &'a [File],
+    _files: &'a [File],
     modules_inclusion: HashMap<&'a str, HashSet<&'a str>>,
 }
 
@@ -41,7 +41,7 @@ impl<'a> DependencyAnalyzer<'a> {
         }
 
         Ok(DependencyAnalyzer {
-            files,
+            _files: files,
             modules_inclusion,
         })
     }

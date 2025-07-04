@@ -72,12 +72,12 @@ impl<'a> ProjectScanner<'a> {
     }
 
     fn is_valid_entry(entry: &DirEntry) -> bool {
-        (entry.file_type().is_dir()
+        entry.file_type().is_dir()
             || entry
                 .file_name()
                 .to_str()
                 .map(|s| Self::is_valid_file_path(s))
-                .unwrap_or(false))
+                .unwrap_or(false)
         && !Self::is_blacklisted(entry)
         //&& Self::is_whitelisted(entry)
     }
