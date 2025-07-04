@@ -73,14 +73,15 @@ impl<'a> ProjectScanner<'a> {
     }
 
     fn is_valid_entry(entry: &DirEntry) -> bool {
-        entry.file_type().is_dir() && Self::is_valid_file_path(entry.path().to_str().unwrap())
-            || (entry
+        let is_path_valid = Self::is_valid_file_path(entry.path().to_str().unwrap());
+        is_path_valid && (
+        entry.file_type().is_dir() 
+            || entry
                 .file_name()
                 .to_str()
                 .map(|s| Self::is_valid_file_name(s))
                 .unwrap_or(false)
-                && Self::is_valid_file_path(entry.path().to_str().unwrap())
-            )
+           )
     }
 
     fn is_valid_file_name(path: &str) -> bool {
