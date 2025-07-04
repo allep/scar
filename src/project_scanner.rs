@@ -19,7 +19,6 @@ lazy_static::lazy_static! {
         config_map.insert(
             String::from("black_list"),
             vec![
-                String::from("USQLite"),
                 String::from("Intermediate"),
                 String::from("Plugins"),
                 String::from("Binaries"),
@@ -73,12 +72,12 @@ impl<'a> ProjectScanner<'a> {
 
     fn is_valid_entry(entry: &DirEntry) -> bool {
         entry.file_type().is_dir()
-            || entry
+            || (entry
                 .file_name()
                 .to_str()
                 .map(|s| Self::is_valid_file_path(s))
                 .unwrap_or(false)
-        && !Self::is_blacklisted(entry)
+        && !Self::is_blacklisted(entry))
         //&& Self::is_whitelisted(entry)
     }
 
@@ -114,7 +113,6 @@ impl<'a> ProjectScanner<'a> {
                 white_list.iter().all(|wl| path.contains(wl))
             })
     }
-
 }
 
 #[cfg(test)]
@@ -131,7 +129,32 @@ mod tests {
     lazy_static! {
         static ref TEST_PATH: PathBuf = PathBuf::from("/media/workspace/");
         static ref INVALID_TEST_PATH: PathBuf = PathBuf::from(".media/workspace/");
-    }
+    
+        static ref FIRST_TEST_CONTENT: String = "
+        #include \"third.h\"
+        #include \"very_basic_header.h\"
+        
+        void foobar() {{
+            // doing some internal stuff here
+            }}".to_string();
+            
+            static ref SECOND_TEST_CONTENT: String = "#include <iostream>
+            #include \"third.h\"
+            // #include \"some_random_header.h\"
+
+            void main() {{
+                // commented out code
+            }}".to_string();
+            
+            static ref THIRD_TEST_CONTENT: String = "
+            #include \"some_random_header_too.h\"
+            
+            class FooBar {{
+                explicit FooBar() = default;
+                
+                void DoStuff() noexcept {{}};
+                }};".to_string();
+   }
 
     fn create_file(
         path: &Path,
@@ -145,43 +168,17 @@ mod tests {
         Ok(file)
     }
 
-    fn create_cpp_files_in_path(path: &Path) -> Result<Vec<File>, Box<dyn Error>> {
-        let first_content = "\
-#include <iostream>
-#include \"third.h\"
-// #include \"some_random_header.h\"
+    fn create_cpp_files_in_path(path: &Path, files: Vec<&str>, contents: Vec<&str>) -> Result<Vec<File>, Box<dyn Error>> {
 
-void main() {{
-    // commented out code
-}}
+        assert!(files.len() == contents.len(), "Files and contents must have the same length");
+        let mut created_files = Vec::new();
 
-";
+        for (file, content) in files.iter().zip(contents.iter()) {
+            let created_file = create_file(path, file, content)?;
+            created_files.push(created_file);
+        }
 
-        let second_content = "\
-#include \"third.h\"
-#include \"very_basic_header.h\"
-
-void foobar() {{
-    // doing some internal stuff here
-}}
-";
-
-        let third_content = "\
-#include \"some_random_header_too.h\"
-
-class FooBar {{
-    explicit FooBar() = default;
-
-    void DoStuff() noexcept {{}};
-}};
-
-";
-
-        let first = create_file(path, "first.cpp", first_content)?;
-        let second = create_file(path, "second.cpp", second_content)?;
-        let third = create_file(path, "third.h", third_content)?;
-
-        Ok(vec![first, second, third])
+        Ok(created_files)
     }
 
     fn create_dir_tree() -> Result<(TempDir, TempDir), Box<dyn Error>> {
@@ -201,8 +198,8 @@ class FooBar {{
 
         let (temp_base_dir, temp_inner_dir) = create_dir_tree()?;
 
-        let first_level_files = create_cpp_files_in_path(temp_base_dir.path())?;
-        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path())?;
+        let first_level_files = create_cpp_files_in_path(temp_base_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![&FIRST_TEST_CONTENT, &SECOND_TEST_CONTENT, &THIRD_TEST_CONTENT])?;
+        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![&FIRST_TEST_CONTENT, &SECOND_TEST_CONTENT, &THIRD_TEST_CONTENT])?;
 
         let mut project = super::ProjectScanner::make(&temp_base_dir.path())?;
 
@@ -249,5 +246,19 @@ class FooBar {{
     fn invalid_hidden_file_path_test() {
         let invalid_path = INVALID_TEST_PATH.join(".file.cpp");
         assert!(!ProjectScanner::is_valid_file_path(invalid_path.to_str().unwrap()));
+    }
+
+    #[test]
+    fn apply_blacklist() -> Result<(), Box<dyn Error>> {
+        let (temp_base_dir, temp_inner_dir) = create_dir_tree()?;
+
+        let first_level_files = create_cpp_files_in_path(temp_base_dir.path(), vec!["file1.cpp"], vec![""])?;
+        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path(), vec!["file2.cpp"], vec![""])?;
+
+        let mut project = super::ProjectScanner::make(&temp_base_dir.path())?;
+
+        // act
+        let files = project.scan_files()?;
+        Ok(())
     }
 }
