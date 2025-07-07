@@ -36,9 +36,17 @@ impl TopNUseCase {
         let analyzer = DependencyAnalyzer::make(&files)?;
 
         println!("Sorting impact ...");
-        let _sorted_impacts = analyzer.get_sorted_impact();
+        let sorted_impacts = analyzer.get_sorted_impact();
 
         println!("Sorted!");
+
+        for i in sorted_impacts[..num].iter() {
+            println!(
+                "Include found: {}, num impacted files: {}",
+                i.get_file_name(),
+                i.get_including_file_paths().len()
+            );
+        }
 
         Ok(())
     }

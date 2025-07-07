@@ -97,9 +97,13 @@ impl<'a> DependencyAnalyzer<'a> {
         for inc in &included_files {
             match self.dfs_tree(inc) {
                 Ok(tree) => {
+                    // create the impacted list from the visited files, excluding the current file
+                    // itself
                     dependencies.push(DependencyEntry {
                         file_name: inc,
-                        including_files_paths: HashSet::from_iter(tree.visit_order.iter().cloned()),
+                        including_files_paths: HashSet::from_iter(
+                            tree.visit_order.iter().filter(|&v| v != inc).cloned(),
+                        ),
                     });
                 }
                 Err(e) => println!("Error while computing sorted impact: {}", e),
@@ -366,14 +370,12 @@ namespace BlaBlah {
         let expected = [
             ("foobar.h", 2),
             ("iostream", 1),
-            ("blablah.h", 1),
+            ("blablah.h", 3),
             ("main.cpp", 0),
             ("leviathan.h", 0),
         ];
 
         assert_eq!(5, sorted_impacts.len());
-
-        dbg!(&sorted_impacts);
 
         for e in expected.into_iter() {
             assert!(sorted_impacts
