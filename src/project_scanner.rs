@@ -1,8 +1,34 @@
 use crate::file::File;
-use std::error::Error;
+use std::{error::Error, path};
 use std::fs::read_to_string;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
+use lazy_static;
+use std::collections::HashMap;
+
+
+lazy_static::lazy_static! {
+    static ref CONFIG: HashMap<String, Vec<String>> = {
+        let mut config_map = HashMap::new();
+        config_map.insert(
+            String::from("white_list"),
+            vec![
+                String::from("Source"),
+            ],
+        );
+        config_map.insert(
+            String::from("black_list"),
+            vec![
+                String::from("Intermediate"),
+                String::from("Plugins"),
+                String::from("TestAutomationCore"),
+                String::from("Binaries"),
+                String::from("TestData"),
+            ],
+        );
+        config_map
+    };
+}
 
 pub struct ProjectScanner<'a> {
     base_path: &'a Path,
@@ -47,17 +73,24 @@ impl<'a> ProjectScanner<'a> {
     }
 
     fn is_valid_entry(entry: &DirEntry) -> bool {
-        entry.file_type().is_dir()
+        let is_path_valid = Self::is_valid_file_path(entry.path().to_str().unwrap());
+        is_path_valid && (
+        entry.file_type().is_dir() 
             || entry
                 .file_name()
                 .to_str()
-                .map(|s| Self::is_valid_file_path(s))
+                .map(|s| Self::is_valid_file_name(s))
                 .unwrap_or(false)
+           )
+    }
+
+    fn is_valid_file_name(path: &str) -> bool {
+        !path.starts_with(".") && (path.ends_with(".cpp") || path.ends_with(".h"))
     }
 
     fn is_valid_file_path(path: &str) -> bool {
-        !path.starts_with(".") && (path.ends_with(".cpp") || path.ends_with(".h"))
-    }
+        !Self::is_blacklisted(path)
+    } 
 
     fn on_processed_file(&mut self) {
         self.processed_files += 1;
@@ -65,6 +98,17 @@ impl<'a> ProjectScanner<'a> {
             println!("Processed num. files: {}", self.processed_files);
         }
     }
+
+    fn is_blacklisted(entry: &str) -> bool {
+        let is_blacklisted = CONFIG
+            .get("black_list")
+            .map_or(false, |black_list| {
+                black_list.iter().any(|bl| entry.contains(bl))
+            });
+
+        is_blacklisted
+    }
+
 }
 
 #[cfg(test)]
@@ -72,7 +116,53 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
+    use std::path;
+    use std::path::PathBuf;
     use tempdir::TempDir;
+    use std::path::Path;
+    use lazy_static::lazy_static;
+
+    static FIRST_TEST_CONTENT: &str = "#include \"third.h\"
+        #include \"very_basic_header.h\"
+        
+        void foobar() {{
+            // doing some internal stuff here
+            }}";
+
+    static SECOND_TEST_CONTENT: &str = "#include <iostream>
+            #include \"third.h\"
+            // #include \"some_random_header.h\"
+
+            void main() {{
+                // commented out code
+            }}";
+            
+    static THIRD_TEST_CONTENT: &str = "
+    #include \"some_random_header_too.h\"
+    
+    class FooBar {{
+        explicit FooBar() = default;
+        
+        void DoStuff() noexcept {{}};
+        }};";
+
+    lazy_static! {
+        static ref TEST_PATH: PathBuf = PathBuf::from("/media/workspace");
+        static ref INVALID_TEST_PATH: PathBuf = PathBuf::from(".media/workspace/");
+
+        static ref TEST_PATH_TO_BE_FILTERED: Vec<PathBuf> = vec![
+            PathBuf::from("/media/workspace/Source/Intermediate/Plugins/Binaries/test.cpp"),
+            PathBuf::from("/media/workspace/Source/Intermediate/Plugins/Binaries/SomePlugin/test.h"),
+            PathBuf::from("/media/workspace/repos/BIM/Dreamcatcher/Intermediate/Build/Linux/UnrealEditor/Inc/KitchenEntities/UHT/KEKitchenMaterialDataC.generated.h"),
+            PathBuf::from("/media/workspace/repos/BIM/Dreamcatcher/Plugins/SERE/Source/SimpleElementsRenderingExtension/Shaders"),
+            PathBuf::from("/home/vincenzo/repos/BIM/Dreamcatcher/Plugins/USQLite/Source/Runtime/Public/USQLReflector.h"),
+        ];
+
+        static ref TEST_PATH_NOT_TO_BE_FILTERED: Vec<PathBuf> = vec![
+            PathBuf::from("/media/workspace/Source/test.cpp"),
+            PathBuf::from("/media/workspace/Source/test.h"),
+        ];
+   }
 
     fn create_file(
         path: &Path,
@@ -86,43 +176,17 @@ mod tests {
         Ok(file)
     }
 
-    fn create_cpp_files_in_path(path: &Path) -> Result<Vec<File>, Box<dyn Error>> {
-        let first_content = "\
-#include <iostream>
-#include \"third.h\"
-// #include \"some_random_header.h\"
+    fn create_cpp_files_in_path(path: &Path, files: Vec<&str>, contents: Vec<&str>) -> Result<Vec<File>, Box<dyn Error>> {
 
-void main() {{
-    // commented out code
-}}
+        assert!(files.len() == contents.len(), "Files and contents must have the same length");
+        let mut created_files = Vec::new();
 
-";
+        for (file, content) in files.iter().zip(contents.iter()) {
+            let created_file = create_file(path, file, content)?;
+            created_files.push(created_file);
+        }
 
-        let second_content = "\
-#include \"third.h\"
-#include \"very_basic_header.h\"
-
-void foobar() {{
-    // doing some internal stuff here
-}}
-";
-
-        let third_content = "\
-#include \"some_random_header_too.h\"
-
-class FooBar {{
-    explicit FooBar() = default;
-
-    void DoStuff() noexcept {{}};
-}};
-
-";
-
-        let first = create_file(path, "first.cpp", first_content)?;
-        let second = create_file(path, "second.cpp", second_content)?;
-        let third = create_file(path, "third.h", third_content)?;
-
-        Ok(vec![first, second, third])
+        Ok(created_files)
     }
 
     fn create_dir_tree() -> Result<(TempDir, TempDir), Box<dyn Error>> {
@@ -142,8 +206,8 @@ class FooBar {{
 
         let (temp_base_dir, temp_inner_dir) = create_dir_tree()?;
 
-        let first_level_files = create_cpp_files_in_path(temp_base_dir.path())?;
-        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path())?;
+        let first_level_files = create_cpp_files_in_path(temp_base_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![FIRST_TEST_CONTENT, SECOND_TEST_CONTENT, THIRD_TEST_CONTENT])?;
+        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![FIRST_TEST_CONTENT, SECOND_TEST_CONTENT, THIRD_TEST_CONTENT])?;
 
         let mut project = super::ProjectScanner::make(&temp_base_dir.path())?;
 
@@ -170,25 +234,36 @@ class FooBar {{
 
     #[test]
     fn valid_cpp_file_path_test() {
-        let valid_path = "/media/workspace/file.cpp";
-        assert!(ProjectScanner::is_valid_file_path(valid_path));
+        let valid_path = TEST_PATH.join("file.cpp");
+        assert!(ProjectScanner::is_valid_file_name(valid_path.to_str().unwrap()));
     }
 
     #[test]
     fn valid_header_file_path_test() {
-        let valid_path = "/media/workspace/file.h";
-        assert!(ProjectScanner::is_valid_file_path(valid_path));
+        let valid_path = TEST_PATH.join("file.h");
+        assert!(ProjectScanner::is_valid_file_name(valid_path.to_str().unwrap()));
     }
 
     #[test]
     fn invalid_hidden_directory_path_test() {
-        let invalid_path = ".media/workspace/file.h";
-        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
+        let invalid_path = INVALID_TEST_PATH.join("file.h");
+        assert!(!ProjectScanner::is_valid_file_name(invalid_path.to_str().unwrap()));
     }
 
     #[test]
     fn invalid_hidden_file_path_test() {
-        let invalid_path = ".file.h";
-        assert!(!ProjectScanner::is_valid_file_path(invalid_path));
+        let invalid_path = INVALID_TEST_PATH.join(".file.cpp");
+        assert!(!ProjectScanner::is_valid_file_name(invalid_path.to_str().unwrap()));
     }
+
+    #[test]
+    fn blacklisted_directory_path_test() {
+        for path in TEST_PATH_TO_BE_FILTERED.iter() {
+            assert!(ProjectScanner::is_blacklisted(path.to_str().unwrap()));
+        }
+
+        for path in TEST_PATH_NOT_TO_BE_FILTERED.iter() {
+            assert!(!ProjectScanner::is_blacklisted(path.to_str().unwrap()));
+        }
+    }   
 }
