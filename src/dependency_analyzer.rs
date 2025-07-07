@@ -93,34 +93,27 @@ impl<'a> DependencyAnalyzer<'a> {
         let included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
         assert!(!included_files.is_empty());
 
-        let mut count = 0;
+        let mut dependencies = Vec::new();
         for inc in &included_files {
             match self.dfs_tree(inc) {
-                Ok(_tree) => {
-                    println!("{} - computed a dfs tree for {}", count, inc);
-                    count += 1;
+                Ok(tree) => {
+                    dependencies.push(DependencyEntry {
+                        file_name: inc,
+                        including_files_paths: HashSet::from_iter(tree.visit_order.iter().cloned()),
+                    });
                 }
                 Err(e) => println!("Error while computing sorted impact: {}", e),
             }
         }
 
-        let start_node = "foobar.h";
-        match self.dfs_tree(start_node) {
-            Ok(tree) => {
-                println!("\nDFS tree from {}", start_node);
-                tree.print_tree(start_node, 0);
+        dependencies.sort_by(|a, b| {
+            // decreasing order: from most to least long inclusion list
+            b.including_files_paths
+                .len()
+                .cmp(&a.including_files_paths.len())
+        });
 
-                println!("\nVisit order: {:?}", tree.visit_order);
-
-                println!("\nTree representation:");
-                for (parent, children) in &tree.tree {
-                    println!("  {} -> {:?}", parent, children);
-                }
-            }
-            Err(e) => println!("Error while computing sorted impact: {}", e),
-        }
-
-        Vec::new()
+        dependencies
     }
 
     pub fn extract_filename_from_path(path: &str) -> &str {
@@ -379,6 +372,8 @@ namespace BlaBlah {
         ];
 
         assert_eq!(5, sorted_impacts.len());
+
+        dbg!(&sorted_impacts);
 
         for e in expected.into_iter() {
             assert!(sorted_impacts
