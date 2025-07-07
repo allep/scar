@@ -98,7 +98,7 @@ impl<'a> DependencyAnalyzer<'a> {
             match self.dfs_tree(inc) {
                 Ok(tree) => {
                     // debug print
-                    tree.print_tree(inc, 0);
+                    // tree.print_tree(inc, 0);
 
                     // create the impacted list from the visited files, excluding the current file
                     // itself

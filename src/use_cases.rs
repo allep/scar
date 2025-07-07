@@ -1,5 +1,7 @@
 use crate::dependency_analyzer::DependencyAnalyzer;
+use crate::dependency_analyzer::DependencyEntry;
 use crate::project_scanner::ProjectScanner;
+use std::cmp::Ordering;
 use std::error::Error;
 use std::path::Path;
 
@@ -15,9 +17,14 @@ impl TopNUseCase {
 
         println!("Sorting ...");
         let sorted_inclusions = analyzer.get_sorted_inclusion();
-
         println!("Sorted!");
-        for i in sorted_inclusions[..num].iter() {
+
+        let sorted_inclusions: &[DependencyEntry] = match sorted_inclusions.len().cmp(&num) {
+            Ordering::Less | Ordering::Equal => &sorted_inclusions[..],
+            Ordering::Greater => &sorted_inclusions[..num],
+        };
+
+        for i in sorted_inclusions.iter() {
             println!(
                 "Include found: {}, num inclusions: {}",
                 i.get_file_name(),
@@ -40,7 +47,12 @@ impl TopNUseCase {
 
         println!("Sorted!");
 
-        for i in sorted_impacts[..num].iter() {
+        let sorted_impacts: &[DependencyEntry] = match sorted_impacts.len().cmp(&num) {
+            Ordering::Less | Ordering::Equal => &sorted_impacts[..],
+            Ordering::Greater => &sorted_impacts[..num],
+        };
+
+        for i in sorted_impacts.iter() {
             println!(
                 "Include found: {}, num impacted files: {}",
                 i.get_file_name(),
