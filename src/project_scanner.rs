@@ -122,6 +122,30 @@ mod tests {
     use std::path::Path;
     use lazy_static::lazy_static;
 
+    static FIRST_TEST_CONTENT: &str = "#include \"third.h\"
+        #include \"very_basic_header.h\"
+        
+        void foobar() {{
+            // doing some internal stuff here
+            }}";
+
+    static SECOND_TEST_CONTENT: &str = "#include <iostream>
+            #include \"third.h\"
+            // #include \"some_random_header.h\"
+
+            void main() {{
+                // commented out code
+            }}";
+            
+    static THIRD_TEST_CONTENT: &str = "
+    #include \"some_random_header_too.h\"
+    
+    class FooBar {{
+        explicit FooBar() = default;
+        
+        void DoStuff() noexcept {{}};
+        }};";
+
     lazy_static! {
         static ref TEST_PATH: PathBuf = PathBuf::from("/media/workspace");
         static ref INVALID_TEST_PATH: PathBuf = PathBuf::from(".media/workspace/");
@@ -136,32 +160,8 @@ mod tests {
 
         static ref TEST_PATH_NOT_TO_BE_FILTERED: Vec<PathBuf> = vec![
             PathBuf::from("/media/workspace/Source/test.cpp"),
+            PathBuf::from("/media/workspace/Source/test.h"),
         ];
-
-        static ref FIRST_TEST_CONTENT: String = "
-        #include \"third.h\"
-        #include \"very_basic_header.h\"
-        
-        void foobar() {{
-            // doing some internal stuff here
-            }}".to_string();
-            
-            static ref SECOND_TEST_CONTENT: String = "#include <iostream>
-            #include \"third.h\"
-            // #include \"some_random_header.h\"
-
-            void main() {{
-                // commented out code
-            }}".to_string();
-            
-            static ref THIRD_TEST_CONTENT: String = "
-            #include \"some_random_header_too.h\"
-            
-            class FooBar {{
-                explicit FooBar() = default;
-                
-                void DoStuff() noexcept {{}};
-                }};".to_string();
    }
 
     fn create_file(
@@ -206,8 +206,8 @@ mod tests {
 
         let (temp_base_dir, temp_inner_dir) = create_dir_tree()?;
 
-        let first_level_files = create_cpp_files_in_path(temp_base_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![&FIRST_TEST_CONTENT, &SECOND_TEST_CONTENT, &THIRD_TEST_CONTENT])?;
-        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![&FIRST_TEST_CONTENT, &SECOND_TEST_CONTENT, &THIRD_TEST_CONTENT])?;
+        let first_level_files = create_cpp_files_in_path(temp_base_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![FIRST_TEST_CONTENT, SECOND_TEST_CONTENT, THIRD_TEST_CONTENT])?;
+        let second_level_files = create_cpp_files_in_path(temp_inner_dir.path(), vec!["first.cpp", "second.cpp", "third.h"], vec![FIRST_TEST_CONTENT, SECOND_TEST_CONTENT, THIRD_TEST_CONTENT])?;
 
         let mut project = super::ProjectScanner::make(&temp_base_dir.path())?;
 
