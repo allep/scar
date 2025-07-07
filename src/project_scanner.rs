@@ -148,9 +148,10 @@ mod tests {
         static ref TEST_PATH_TO_BE_FILTERED: Vec<PathBuf> = vec![
             PathBuf::from("/media/workspace/Source/Intermediate/Plugins/Binaries/test.cpp"),
             PathBuf::from("/media/workspace/Source/Intermediate/Plugins/Binaries/SomePlugin/test.h"),
-            PathBuf::from("/media/workspace/repos/BIM/Dreamcatcher/Intermediate/Build/Linux/UnrealEditor/Inc/KitchenEntities/UHT/KEKitchenMaterialDataC.generated.h"),
-            PathBuf::from("/media/workspace/repos/BIM/Dreamcatcher/Plugins/SERE/Source/SimpleElementsRenderingExtension/Shaders"),
-            PathBuf::from("/home/vincenzo/repos/BIM/Dreamcatcher/Plugins/USQLite/Source/Runtime/Public/USQLReflector.h"),
+            PathBuf::from("/media/workspace/repos/BarFoo/FooBar/Intermediate/Build/Linux/UnrealEditor/Inc/KitchenEntities/UHT/KEKitchenMaterialDataC.generated.h"),
+            PathBuf::from("/media/workspace/repos/BarFoo/FooBar/Plugins/SERE/Source/SimpleElementsRenderingExtension/Shaders"),
+            PathBuf::from("/home/user/repos/BarFoo/FooBar/Plugins/USQLite/Source/Runtime/Public/USQLReflector.h"),
+            PathBuf::from("/home/user/repos/BarFoo/FooBar/Plugins/USQLite/Source/Runtime/Public/USQLReflector.generated.h"),
         ];
 
         static ref TEST_PATH_NOT_TO_BE_FILTERED: Vec<PathBuf> = vec![
