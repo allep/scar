@@ -24,6 +24,7 @@ lazy_static::lazy_static! {
                 String::from("TestAutomationCore"),
                 String::from("Binaries"),
                 String::from("TestData"),
+                String::from("generated.h"),
             ],
         );
         config_map
