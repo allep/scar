@@ -5,6 +5,13 @@ use std::cmp::Ordering;
 use std::error::Error;
 use std::path::Path;
 
+fn get_slice_up_to<T>(slice: &[T], num: usize) -> &[T] {
+    match slice.len().cmp(&num) {
+        Ordering::Less | Ordering::Equal => &slice[..],
+        Ordering::Greater => &slice[..num],
+    }
+}
+
 pub struct TopNUseCase {}
 
 impl TopNUseCase {
@@ -19,10 +26,7 @@ impl TopNUseCase {
         let sorted_inclusions = analyzer.get_sorted_inclusion();
         println!("Sorted!");
 
-        let sorted_inclusions: &[DependencyEntry] = match sorted_inclusions.len().cmp(&num) {
-            Ordering::Less | Ordering::Equal => &sorted_inclusions[..],
-            Ordering::Greater => &sorted_inclusions[..num],
-        };
+        let sorted_inclusions: &[DependencyEntry] = get_slice_up_to(&sorted_inclusions, num);
 
         for i in sorted_inclusions.iter() {
             println!(
@@ -47,10 +51,7 @@ impl TopNUseCase {
 
         println!("Sorted!");
 
-        let sorted_impacts: &[DependencyEntry] = match sorted_impacts.len().cmp(&num) {
-            Ordering::Less | Ordering::Equal => &sorted_impacts[..],
-            Ordering::Greater => &sorted_impacts[..num],
-        };
+        let sorted_impacts: &[DependencyEntry] = get_slice_up_to(&sorted_impacts, num);
 
         for i in sorted_impacts.iter() {
             println!(
@@ -61,5 +62,20 @@ impl TopNUseCase {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_slice_up_to_num_test() {
+        let elements = vec![1, 2, 3, 4, 5, 6];
+
+        assert_eq!(vec![1, 2, 3], get_slice_up_to(&elements, 3));
+        assert_eq!(vec![1, 2, 3, 4, 5, 6], get_slice_up_to(&elements, 6));
+        assert_eq!(vec![1, 2, 3, 4, 5, 6], get_slice_up_to(&elements, 7));
+        assert_eq!(vec![1, 2, 3, 4, 5, 6], get_slice_up_to(&elements, 1000));
     }
 }
