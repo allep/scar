@@ -1,9 +1,9 @@
 use crate::file::File;
 use lazy_static;
 use std::collections::HashMap;
+use std::error::Error;
 use std::fs::read_to_string;
 use std::path::Path;
-use std::{error::Error, path};
 use walkdir::{DirEntry, WalkDir};
 
 lazy_static::lazy_static! {
@@ -113,7 +113,6 @@ mod tests {
     use lazy_static::lazy_static;
     use std::fs::File;
     use std::io::Write;
-    use std::path;
     use std::path::Path;
     use std::path::PathBuf;
     use tempdir::TempDir;

@@ -224,11 +224,7 @@ impl<'a> DFSTree<'a> {
 mod tests {
     use super::*;
 
-    fn create_sample_files() -> Result<Vec<File>, Box<dyn Error>> {
-        let first_name = "main.cpp";
-        let first = File::make(
-            first_name,
-            "\
+    static FIRST_FILE_CONTENT: &str = "\
 #include <iostream>
 #include \"foobar.h\"
 //#include \"commented_out.h\"
@@ -238,26 +234,18 @@ int main(void) {
     printf(\"Hello world\");
     return 0;
 };
-",
-        )?;
+    ";
 
-        let second_name = "foobar.h";
-        let second = File::make(
-            second_name,
-            "\
+    static SECOND_FILE_CONTENT: &str = "\
 #include \"blablah.h\"
 
 class Point {{
     explicit Point() = default;
     virtual ~Point() = default;
 }};
-",
-        )?;
+    ";
 
-        let third_name = "leviathan.h";
-        let third = File::make(
-            third_name,
-            "\
+    static THIRD_FILE_CONTENT: &str = "\
 #include \"foobar.h\"
 
 namespace Leviathan {
@@ -265,8 +253,17 @@ namespace Leviathan {
 void DoSomeStuff(uint8_t value) {}
 
 }
-",
-        )?;
+    ";
+
+    fn create_sample_files() -> Result<Vec<File>, Box<dyn Error>> {
+        let first_name = "main.cpp";
+        let first = File::make(first_name, FIRST_FILE_CONTENT)?;
+
+        let second_name = "foobar.h";
+        let second = File::make(second_name, SECOND_FILE_CONTENT)?;
+
+        let third_name = "leviathan.h";
+        let third = File::make(third_name, THIRD_FILE_CONTENT)?;
 
         let fourth_name = "blablah.h";
         let fourth = File::make(
