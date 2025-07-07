@@ -97,6 +97,9 @@ impl<'a> DependencyAnalyzer<'a> {
         for inc in &included_files {
             match self.dfs_tree(inc) {
                 Ok(tree) => {
+                    // debug print
+                    tree.print_tree(inc, 0);
+
                     // create the impacted list from the visited files, excluding the current file
                     // itself
                     dependencies.push(DependencyEntry {
@@ -207,7 +210,7 @@ impl<'a> DFSTree<'a> {
     }
 
     fn print_tree(&self, node: &str, level: usize) {
-        println!("{}{}", "  ".repeat(level), node);
+        println!("{}{}", "    ".repeat(level), node);
         if let Some(children) = self.tree.get(node) {
             for child in children {
                 self.print_tree(child, level + 1);
