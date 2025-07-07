@@ -29,6 +29,17 @@ impl TopNUseCase {
     }
 
     pub fn do_sorted_topn_impact(path: &str, num: usize) -> Result<(), Box<dyn Error>> {
-        todo!()
+        let path = Path::new(path);
+        let mut project = ProjectScanner::make(path)?;
+
+        let files = project.scan_files()?;
+        let analyzer = DependencyAnalyzer::make(&files)?;
+
+        println!("Sorting impact ...");
+        let _sorted_impacts = analyzer.get_sorted_impact();
+
+        println!("Sorted!");
+
+        Ok(())
     }
 }

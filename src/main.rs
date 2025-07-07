@@ -7,6 +7,9 @@ struct Args {
     #[arg(short = 't', long = "topn")]
     topn_analyzer: bool,
 
+    #[arg(short = 'i', long = "topnimpact")]
+    topn_impact_analyzer: bool,
+
     #[arg(short = 'p', long = "path")]
     project_path: String,
 
@@ -19,7 +22,12 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let args = Args::parse();
 
-    let config = scar::Config::build(&args.project_path, args.topn_analyzer, args.output_size)?;
+    let config = scar::Config::build(
+        &args.project_path,
+        args.topn_analyzer,
+        args.topn_impact_analyzer,
+        args.output_size,
+    )?;
     scar::run(config)?;
 
     Ok(())

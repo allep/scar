@@ -93,6 +93,17 @@ impl<'a> DependencyAnalyzer<'a> {
         let included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
         assert!(!included_files.is_empty());
 
+        let mut count = 0;
+        for inc in &included_files {
+            match self.dfs_tree(inc) {
+                Ok(_tree) => {
+                    println!("{} - computed a dfs tree for {}", count, inc);
+                    count += 1;
+                }
+                Err(e) => println!("Error while computing sorted impact: {}", e),
+            }
+        }
+
         let start_node = "foobar.h";
         match self.dfs_tree(start_node) {
             Ok(tree) => {

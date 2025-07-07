@@ -15,18 +15,27 @@ pub struct Config<'a> {
 #[derive(Debug)]
 enum ScarMode {
     TopNAnalisys(usize),
+    TopNImpactAnalysis(usize),
 }
 
 impl<'a> Config<'a> {
     pub fn build(
         path: &'a str,
         is_topn: bool,
+        is_impact: bool,
         output_size: usize,
     ) -> Result<Config<'a>, Box<dyn Error>> {
         if is_topn {
             return Ok(Config {
                 project_path: path,
                 mode: ScarMode::TopNAnalisys(output_size),
+            });
+        }
+
+        if is_impact {
+            return Ok(Config {
+                project_path: path,
+                mode: ScarMode::TopNImpactAnalysis(output_size),
             });
         }
 
@@ -38,6 +47,9 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     match config.mode {
         ScarMode::TopNAnalisys(output_size) => {
             TopNUseCase::do_sorted_topn_inclusions(config.project_path, output_size)?;
+        }
+        ScarMode::TopNImpactAnalysis(output_size) => {
+            TopNUseCase::do_sorted_topn_impact(config.project_path, output_size)?;
         }
     }
 
