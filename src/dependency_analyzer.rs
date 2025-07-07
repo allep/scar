@@ -210,20 +210,7 @@ impl<'a> DFSTree<'a> {
     }
 
     fn print_tree(&self, node: &str, level: usize) {
-        let dependency_symbol = "└── ";
-        let space_symbol = "    ";
-        let message;
-        if level > 1 {
-            message = format!(
-                "{}{}{}",
-                space_symbol.repeat(level - 1),
-                dependency_symbol,
-                node
-            );
-        } else {
-            message = format!("{}{}", dependency_symbol.repeat(level), node);
-        }
-
+        let message = format!("{}{}", "    ".repeat(level), node);
         println!("{}", message);
         if let Some(children) = self.tree.get(node) {
             for child in children {
