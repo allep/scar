@@ -30,7 +30,7 @@ impl TopNUseCase {
 
         for i in sorted_inclusions.iter() {
             println!(
-                "Include found: {}, num inclusions: {}",
+                "Source found: {}, num inclusions: {}",
                 i.get_file_name(),
                 i.get_including_file_paths().len()
             );
@@ -55,7 +55,7 @@ impl TopNUseCase {
 
         for i in sorted_impacts.iter() {
             println!(
-                "Include found: {}, num impacted files: {}",
+                "Source found: {}, num impacted files: {}",
                 i.get_file_name(),
                 i.get_including_file_paths().len()
             );
