@@ -151,4 +151,44 @@ mod tests {
         assert_eq!(0, impacts["test002.cpp"]);
         Ok(())
     }
+
+    #[test]
+    fn integration_use_case_inclusion_complex() -> Result<(), Box<dyn Error>> {
+        let config = Config::make("tests/complex", 100, false);
+        let inclusions = TopNUseCase::do_sorted_topn_inclusions(config)?;
+        assert_eq!(14, inclusions.len());
+
+        // commented out
+        assert!(!inclusions.contains_key("even_more_nested.h"));
+
+        // filtered because inside Intermediate directory
+        assert!(!inclusions.contains_key("thread"));
+
+        // test only some possible inclusions
+        assert_eq!(1, inclusions["signal_set.hpp"]);
+        assert_eq!(1, inclusions["complex.generated.h"]);
+        assert_eq!(1, inclusions["nested.h"]);
+        assert_eq!(0, inclusions["main.cpp"]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn integration_use_case_impact_complex() -> Result<(), Box<dyn Error>> {
+        let config = Config::make("tests/complex", 100, false);
+        let impacts = TopNUseCase::do_sorted_topn_impact(config)?;
+        assert_eq!(14, impacts.len());
+
+        // test only some possible impacts
+        assert_eq!(3, impacts["udp.hpp"]);
+        assert_eq!(3, impacts["tcp.hpp"]);
+        assert_eq!(3, impacts["signal_set.hpp"]);
+        assert_eq!(2, impacts["use_cases.generated.h"]);
+        assert_eq!(1, impacts["iostream"]);
+        assert_eq!(2, impacts["nested.h"]);
+        assert_eq!(1, impacts["use_cases.h"]);
+        assert_eq!(0, impacts["main.cpp"]);
+
+        Ok(())
+    }
 }
