@@ -39,20 +39,19 @@ impl TopNUseCase {
      * - num: the max number of include to report as output.
      */
     pub fn do_sorted_topn_inclusions(
-        path: &str,
-        num: usize,
+        config: Config,
     ) -> Result<HashMap<String, usize>, Box<dyn Error>> {
-        let path = Path::new(path);
+        let path = Path::new(config.path);
         let mut project = ProjectScanner::make(path)?;
 
         let files = project.scan_files()?;
-        let analyzer = DependencyAnalyzer::make(&files)?;
+        let analyzer = DependencyAnalyzer::make(&files, config.debug)?;
 
         println!("Sorting ...");
         let sorted_inclusions = analyzer.get_sorted_inclusion();
         println!("Sorted!");
 
-        let sorted_inclusions = get_slice_up_to(&sorted_inclusions, num);
+        let sorted_inclusions = get_slice_up_to(&sorted_inclusions, config.output_size);
         for i in sorted_inclusions.iter() {
             println!(
                 "Source found: {}, num inclusions: {}",
@@ -72,22 +71,20 @@ impl TopNUseCase {
      * - path: the project path to analyze
      * - num: the max number of include to report as output.
      */
-    pub fn do_sorted_topn_impact(
-        path: &str,
-        num: usize,
-    ) -> Result<HashMap<String, usize>, Box<dyn Error>> {
-        let path = Path::new(path);
+    pub fn do_sorted_topn_impact(config: Config) -> Result<HashMap<String, usize>, Box<dyn Error>> {
+        let path = Path::new(config.path);
         let mut project = ProjectScanner::make(path)?;
 
         let files = project.scan_files()?;
-        let analyzer = DependencyAnalyzer::make(&files)?;
+        let analyzer = DependencyAnalyzer::make(&files, config.debug)?;
 
         println!("Sorting impact ...");
         let sorted_impacts = analyzer.get_sorted_impact();
 
         println!("Sorted!");
 
-        let sorted_impacts: &[DependencyEntry] = get_slice_up_to(&sorted_impacts, num);
+        let sorted_impacts: &[DependencyEntry] =
+            get_slice_up_to(&sorted_impacts, config.output_size);
 
         for i in sorted_impacts.iter() {
             println!(
@@ -98,6 +95,22 @@ impl TopNUseCase {
         }
 
         Ok(Self::make_output_data_from_slice(sorted_impacts))
+    }
+}
+
+pub struct Config<'a> {
+    path: &'a str,
+    output_size: usize,
+    debug: bool,
+}
+
+impl<'a> Config<'a> {
+    pub fn make(path: &'a str, output_size: usize, debug: bool) -> Self {
+        Config {
+            path,
+            output_size,
+            debug,
+        }
     }
 }
 
@@ -117,7 +130,8 @@ mod tests {
 
     #[test]
     fn integration_use_case_inclusion_simple() -> Result<(), Box<dyn Error>> {
-        let inclusions = TopNUseCase::do_sorted_topn_inclusions("tests/simple", 100)?;
+        let config = Config::make("tests/simple", 100, false);
+        let inclusions = TopNUseCase::do_sorted_topn_inclusions(config)?;
         assert_eq!(4, inclusions.len());
         assert_eq!(2, inclusions["test001.h"]);
         assert_eq!(1, inclusions["test002.h"]);
@@ -128,7 +142,8 @@ mod tests {
 
     #[test]
     fn integration_use_case_impact_simple() -> Result<(), Box<dyn Error>> {
-        let impacts = TopNUseCase::do_sorted_topn_impact("tests/simple", 100)?;
+        let config = Config::make("tests/simple", 100, false);
+        let impacts = TopNUseCase::do_sorted_topn_impact(config)?;
         assert_eq!(4, impacts.len());
         assert_eq!(3, impacts["test001.h"]);
         assert_eq!(1, impacts["test002.h"]);

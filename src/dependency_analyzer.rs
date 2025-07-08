@@ -13,10 +13,12 @@ pub struct DependencyAnalyzer<'a> {
      * "foobar.cpp")
      */
     modules_inclusion: HashMap<&'a str, HashSet<&'a str>>,
+
+    debug: bool,
 }
 
 impl<'a> DependencyAnalyzer<'a> {
-    pub fn make(files: &'a [File]) -> Result<DependencyAnalyzer<'a>, Box<dyn Error>> {
+    pub fn make(files: &'a [File], debug: bool) -> Result<DependencyAnalyzer<'a>, Box<dyn Error>> {
         let mut modules_inclusion = HashMap::new();
 
         for f in files {
@@ -50,6 +52,7 @@ impl<'a> DependencyAnalyzer<'a> {
         Ok(DependencyAnalyzer {
             _files: files,
             modules_inclusion,
+            debug,
         })
     }
 
@@ -97,8 +100,9 @@ impl<'a> DependencyAnalyzer<'a> {
         for inc in &included_files {
             match self.dfs_tree(inc) {
                 Ok(tree) => {
-                    // debug print
-                    tree.print_tree(inc, 0);
+                    if self.debug {
+                        tree.print_tree(inc, 0);
+                    }
 
                     // create the impacted list from the visited files, excluding the current file
                     // itself
@@ -282,7 +286,8 @@ namespace BlaBlah {
     fn simple_parsing_test() -> Result<(), Box<dyn Error>> {
         let files = create_sample_files()?;
 
-        let analyzer = DependencyAnalyzer::make(&files)?;
+        let debug = true;
+        let analyzer = DependencyAnalyzer::make(&files, debug)?;
         let inclusion_map = analyzer.get_inclusion_map();
 
         assert_eq!(5, inclusion_map.len());
@@ -339,7 +344,8 @@ namespace BlaBlah {
     fn top_included_sort_test() -> Result<(), Box<dyn Error>> {
         let files = create_sample_files()?;
 
-        let analyzer = DependencyAnalyzer::make(&files)?;
+        let debug = true;
+        let analyzer = DependencyAnalyzer::make(&files, debug)?;
         let sorted_list = analyzer.get_sorted_inclusion();
 
         let expected = [
@@ -365,7 +371,8 @@ namespace BlaBlah {
     fn top_impact_sort_test() -> Result<(), Box<dyn Error>> {
         let files = create_sample_files()?;
 
-        let analyzer = DependencyAnalyzer::make(&files)?;
+        let debug = true;
+        let analyzer = DependencyAnalyzer::make(&files, debug)?;
         let sorted_impacts = analyzer.get_sorted_impact();
 
         let expected = [

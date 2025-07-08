@@ -15,6 +15,9 @@ struct Args {
 
     #[arg(short = 'n', long = "num", default_value = "42")]
     output_size: usize,
+
+    #[arg(short = 'd', long = "debug", default_value = "false")]
+    debug: bool,
 }
 
 fn main() -> Result<(), Box<dyn error::Error>> {
@@ -27,6 +30,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         args.topn_analyzer,
         args.topn_impact_analyzer,
         args.output_size,
+        args.debug,
     )?;
     scar::run(config)?;
 
