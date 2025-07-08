@@ -30,6 +30,14 @@ impl TopNUseCase {
             .collect()
     }
 
+    /**
+     * TopN inclusions use-case
+     * Returns the top-N included files by inclusion, i.e., the N most included files in the source
+     * tree.
+     *
+     * - path: the project path to analyze
+     * - num: the max number of include to report as output.
+     */
     pub fn do_sorted_topn_inclusions(
         path: &str,
         num: usize,
@@ -56,6 +64,14 @@ impl TopNUseCase {
         Ok(Self::make_output_data_from_slice(sorted_inclusions))
     }
 
+    /**
+     * TopN impact use-case
+     * Returns the top-N impacting files by inclusion, i.e., the N most impacting files due to
+     * inclusion from the source code tree.
+     *
+     * - path: the project path to analyze
+     * - num: the max number of include to report as output.
+     */
     pub fn do_sorted_topn_impact(
         path: &str,
         num: usize,
