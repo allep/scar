@@ -9,3 +9,4 @@ tempdir = "0.3"
 walkdir = "2.5.0"
 lazy_static = "1.4"
 clap = { version = "4.4.2", features = ["derive"] }
+colored = "2.2.0"

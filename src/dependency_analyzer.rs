@@ -2,6 +2,7 @@ use crate::file::File;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
+use colored::Colorize;
 
 pub struct DependencyAnalyzer<'a> {
     _files: &'a [File],
@@ -84,6 +85,24 @@ impl<'a> DependencyAnalyzer<'a> {
                     file_name,
                     including_files_paths,
                 }
+            })
+            .collect()
+    }
+
+    pub fn filter_outside_inclusions<'b>(&'b self, included_files: Vec<&'b str>) -> Vec<&'b str> {
+        // Remove from included files the ones that are not inside the scanned files
+        // Create a HashSet of file names for O(1) lookup
+        let file_names: std::collections::HashSet<_> = self._files
+            .iter()
+            .map(|file| file.get_name())
+            .collect();
+
+        included_files
+            .into_iter()
+            .filter(|&included_file| {
+                println!("Checking inclusion for: {}", included_file);
+                // Keep files that are NOT in the HashSet
+                file_names.contains(included_file)
             })
             .collect()
     }
@@ -179,7 +198,7 @@ impl<'a> DependencyAnalyzer<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DependencyEntry<'a> {
     file_name: &'a str,
     including_files_paths: HashSet<&'a str>,
@@ -215,7 +234,14 @@ impl<'a> DFSTree<'a> {
 
     fn print_tree(&self, node: &str, level: usize) {
         let message = format!("{}{}", "    ".repeat(level), node);
-        println!("{}", message);
+        match level % 5 {
+            0 => println!("{}", message.red()),
+            1 => println!("{}", message.green()),
+            2 => println!("{}", message.blue()),
+            3 => println!("{}", message.yellow()),
+            4 => println!("{}", message.cyan()),
+            _ => unreachable!(),
+        }
         if let Some(children) = self.tree.get(node) {
             for child in children {
                 self.print_tree(child, level + 1);
