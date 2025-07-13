@@ -66,8 +66,21 @@ impl<'a> DependencyAnalyzer<'a> {
      * Useful when the actual number of direct inclusions is needed, without counting for multiple
      * levels of inclusions.
      */
-    pub fn get_sorted_inclusion(&self) -> Vec<DependencyEntry> {
-        let mut included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
+    pub fn get_sorted_inclusion(&self) -> Vec<DependencyEntry<'a>> {
+        let included_files = self.get_included_files();
+        return self.get_sorted_inclusion_impl(included_files);
+    }
+
+    pub fn get_sorted_inclusion_no_external(&self) -> Vec<DependencyEntry<'a>> {
+        let included_files = self.get_included_files();
+        let included_files_no_external = self.filter_outside_inclusions(included_files);
+        return self.get_sorted_inclusion_impl(included_files_no_external);
+    }
+
+    // impl function for get_sorted_inclusion
+    fn get_sorted_inclusion_impl(&self, included_files: Vec<&'a str>) -> Vec<DependencyEntry<'a>> {
+        let mut included_files = included_files;
+
         // decreasing order: from most to least included
         included_files.sort_by(|&a, &b| {
             self.modules_inclusion[b]
@@ -88,8 +101,9 @@ impl<'a> DependencyAnalyzer<'a> {
             })
             .collect()
     }
+        
 
-    pub fn filter_outside_inclusions<'b>(&'b self, included_files: Vec<&'b str>) -> Vec<&'b str> {
+    pub fn filter_outside_inclusions(&self, included_files: Vec<&'a str>) -> Vec<&'a str> {
         // Remove from included files the ones that are not inside the scanned files
         // Create a HashSet of file names for O(1) lookup
         let file_names: std::collections::HashSet<_> = self._files
@@ -100,7 +114,6 @@ impl<'a> DependencyAnalyzer<'a> {
         included_files
             .into_iter()
             .filter(|&included_file| {
-                println!("Checking inclusion for: {}", included_file);
                 // Keep files that are NOT in the HashSet
                 file_names.contains(included_file)
             })
@@ -112,39 +125,57 @@ impl<'a> DependencyAnalyzer<'a> {
      * current file (considering multiple-levels of inclusions).
      */
     pub fn get_sorted_impact(&self) -> Vec<DependencyEntry> {
-        let included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
-        assert!(!included_files.is_empty());
-
-        let mut dependencies = Vec::new();
-        for inc in &included_files {
-            match self.dfs_tree(inc) {
-                Ok(tree) => {
-                    if self.debug {
-                        tree.print_tree(inc, 0);
-                    }
-
-                    // create the impacted list from the visited files, excluding the current file
-                    // itself
-                    dependencies.push(DependencyEntry {
-                        file_name: inc,
-                        including_files_paths: HashSet::from_iter(
-                            tree.visit_order.iter().filter(|&v| v != inc).cloned(),
-                        ),
-                    });
-                }
-                Err(e) => println!("Error while computing sorted impact: {}", e),
-            }
-        }
-
-        dependencies.sort_by(|a, b| {
-            // decreasing order: from most to least long inclusion list
-            b.including_files_paths
-                .len()
-                .cmp(&a.including_files_paths.len())
-        });
-
-        dependencies
+        let included_files = self.get_included_files();
+        self.get_sorted_impact_impl(included_files)
     }
+
+    /**
+     * Returns the list of dependency impacts, i.e., the actual number of files impacted by the
+     * current file (considering multiple-levels of inclusions). Removes external files from the analysis.
+     */
+    pub fn get_sorted_impact_no_external(&self) -> Vec<DependencyEntry> {
+        let included_files = self.get_included_files();
+        let included_files_no_external = self.filter_outside_inclusions(included_files);
+        self.get_sorted_impact_impl(included_files_no_external)
+    }
+
+    fn get_sorted_impact_impl(
+    &self,
+    included_files: Vec<&'a str>,
+) -> Vec<DependencyEntry<'a>> {
+    let mut dependencies = Vec::new();
+    for inc in &included_files {
+        match self.dfs_tree(inc) {
+            Ok(tree) => {
+                if self.debug {
+                    tree.print_tree(inc, 0);
+                }
+                // Only works if visit_order contains references to data with lifetime 'a
+                // For example, if visit_order contains references to self._files data
+                let filtered_paths: HashSet<&'a str> = tree.visit_order
+                    .iter()
+                    .filter(|&v| v != inc)
+                    .filter_map(|path| {
+                        // Find the corresponding reference in self._files with lifetime 'a
+                        self._files.iter()
+                            .find(|file| file.get_name() == *path)
+                            .map(|file| file.get_name())
+                    })
+                    .collect();
+                
+                dependencies.push(DependencyEntry {
+                    file_name: inc,
+                    including_files_paths: filtered_paths,
+                });
+            }
+            Err(e) => println!("Error while computing sorted impact: {}", e),
+        }
+    }
+    dependencies.sort_by(|a, b| {
+        b.including_files_paths.len().cmp(&a.including_files_paths.len())
+    });
+    dependencies
+}
 
     pub fn extract_filename_from_path(path: &str) -> &str {
         match path.split("/").last() {
@@ -196,6 +227,14 @@ impl<'a> DependencyAnalyzer<'a> {
 
         Ok(dfs_tree)
     }
+
+    fn get_included_files(
+        &self) -> Vec<&'a str> {
+            let included_files: Vec<&str> = self.modules_inclusion.keys().cloned().collect();
+            assert!(!included_files.is_empty(), "No included files found.");
+            included_files
+        }
+
 }
 
 #[derive(Debug, Clone)]
