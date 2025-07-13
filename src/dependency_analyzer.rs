@@ -1,8 +1,8 @@
 use crate::file::File;
+use colored::Colorize;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
-use colored::Colorize;
 
 pub struct DependencyAnalyzer<'a> {
     _files: &'a [File],
@@ -234,12 +234,12 @@ impl<'a> DFSTree<'a> {
 
     fn print_tree(&self, node: &str, level: usize) {
         let message = format!("{}{}", "    ".repeat(level), node);
-        match level % 5 {
+        match level % 5{
             0 => println!("{}", message.red()),
-            1 => println!("{}", message.green()),
-            2 => println!("{}", message.blue()),
-            3 => println!("{}", message.yellow()),
-            4 => println!("{}", message.cyan()),
+            1 => println!("{}", message.yellow()),
+            2 => println!("{}", message.green()),
+            3 => println!("{}", message.blue()),
+            4 => println!("{}", message.purple()),
             _ => unreachable!(),
         }
         if let Some(children) = self.tree.get(node) {
