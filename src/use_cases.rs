@@ -64,6 +64,39 @@ impl TopNUseCase {
     }
 
     /**
+     * TopN inclusions no-external use-case
+     * Returns the top-N included files by inclusion, i.e., the N most included files in the source
+     * tree. Removes external files from the analysis.
+     *
+     * - path: the project path to analyze
+     * - num: the max number of include to report as output.
+     */
+    pub fn do_sorted_topn_inclusions_no_external(
+        config: Config,
+    ) -> Result<HashMap<String, usize>, Box<dyn Error>> {
+        let path = Path::new(config.path);
+        let mut project = ProjectScanner::make(path)?;
+
+        let files = project.scan_files()?;
+        let analyzer = DependencyAnalyzer::make(&files, config.debug)?;
+
+        println!("Sorting ...");
+        let sorted_inclusions = analyzer.get_sorted_inclusion_no_external();
+        println!("Sorted!");
+
+        let sorted_inclusions = get_slice_up_to(&sorted_inclusions, config.output_size);
+        for i in sorted_inclusions.iter() {
+            println!(
+                "Source found: {}, num inclusions: {}",
+                i.get_file_name(),
+                i.get_including_file_paths().len()
+            );
+        }
+
+        Ok(Self::make_output_data_from_slice(sorted_inclusions))
+    }
+
+    /**
      * TopN impact use-case
      * Returns the top-N impacting files by inclusion, i.e., the N most impacting files due to
      * inclusion from the source code tree.
@@ -96,6 +129,44 @@ impl TopNUseCase {
 
         Ok(Self::make_output_data_from_slice(sorted_impacts))
     }
+
+    /**
+     * TopN impact no-external use-case
+     * Returns the top-N impacting files by inclusion, i.e., the N most impacting files due to
+     * inclusion from the source code tree. Removes external files from the analysis.
+     *
+     * - path: the project path to analyze
+     * - num: the max number of include to report as output.
+     */
+    pub fn do_sorted_topn_impact_no_external(
+        config: Config,
+    ) -> Result<HashMap<String, usize>, Box<dyn Error>> {
+        let path = Path::new(config.path);
+        let mut project = ProjectScanner::make(path)?;
+
+        let files = project.scan_files()?;
+        let analyzer = DependencyAnalyzer::make(&files, config.debug)?;
+
+        println!("Sorting impact ...");
+        let sorted_impacts = analyzer.get_sorted_impact_no_external();
+
+        println!("Sorted!");
+
+        let sorted_impacts: &[DependencyEntry] =
+            get_slice_up_to(&sorted_impacts, config.output_size);
+
+        for i in sorted_impacts.iter() {
+            println!(
+                "Source found: {}, num impacted files: {}",
+                i.get_file_name(),
+                i.get_including_file_paths().len()
+            );
+        }
+
+        Ok(Self::make_output_data_from_slice(sorted_impacts))   
+    }
+
+
 }
 
 pub struct Config<'a> {
@@ -132,8 +203,8 @@ mod tests {
     fn integration_use_case_inclusion_simple() -> Result<(), Box<dyn Error>> {
         let config = Config::make("tests/simple", 100, false);
         let inclusions = TopNUseCase::do_sorted_topn_inclusions(config)?;
-        assert_eq!(4, inclusions.len());
-        assert_eq!(2, inclusions["test001.h"]);
+        assert_eq!(7, inclusions.len());
+        assert_eq!(3, inclusions["test001.h"]);
         assert_eq!(1, inclusions["test002.h"]);
         assert_eq!(0, inclusions["test001.cpp"]);
         assert_eq!(0, inclusions["test002.cpp"]);
@@ -144,8 +215,8 @@ mod tests {
     fn integration_use_case_impact_simple() -> Result<(), Box<dyn Error>> {
         let config = Config::make("tests/simple", 100, false);
         let impacts = TopNUseCase::do_sorted_topn_impact(config)?;
-        assert_eq!(4, impacts.len());
-        assert_eq!(3, impacts["test001.h"]);
+        assert_eq!(7, impacts.len());
+        assert_eq!(4, impacts["test001.h"]);
         assert_eq!(1, impacts["test002.h"]);
         assert_eq!(0, impacts["test001.cpp"]);
         assert_eq!(0, impacts["test002.cpp"]);
